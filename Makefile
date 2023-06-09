@@ -1,5 +1,6 @@
 XILINX_DIR = /opt/Xilinx/Vivado/2021.2
-SRC = steiner.vhd
+SRC  = valid.vhd
+SRC += steiner.vhd
 TOP = steiner
 
 TB = steiner_tb
