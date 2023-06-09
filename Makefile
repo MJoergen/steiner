@@ -1,12 +1,35 @@
-SRC  = steiner.vhd
-SRC += steiner_tb.vhd
+XILINX_DIR = /opt/Xilinx/Vivado/2021.2
+SRC = steiner.vhd
+TOP = steiner
 
-TOP=steiner_tb
+TB = steiner_tb
 
 all:
-	ghdl -a --std=08 $(SRC)
-	ghdl -r --std=08 $(TOP) --stop-time=1ms --wave=$(TOP).ghw
+	ghdl -a --std=08 $(SRC) $(TB).vhd
+	ghdl -r --std=08 $(TB) --stop-time=1ms --wave=$(TB).ghw
 
 show:
-	gtkwave $(TOP).ghw $(TOP).gtkw
+	gtkwave $(TB).ghw $(TB).gtkw
+
+
+################################################
+## Synthesis using Vivado
+################################################
+
+$(TOP).bit: $(TOP).tcl $(SRC) $(TOP).xdc
+	bash -c "source $(XILINX_DIR)/settings64.sh ; vivado -mode tcl -source $<"
+
+$(TOP).tcl: Makefile
+	echo "# This is a tcl command script for the Vivado tool chain" > $@
+	echo "read_vhdl -vhdl2008 { $(SRC) }" >> $@
+	echo "read_xdc $(TOP).xdc" >> $@
+	echo "synth_design -top $(TOP) -part xc7a100tcsg324-1 -flatten_hierarchy none" >> $@
+	echo "write_checkpoint -force post_synth.dcp" >> $@
+	echo "opt_design" >> $@
+	echo "place_design" >> $@
+	echo "phys_opt_design" >> $@
+	echo "route_design" >> $@
+	echo "write_checkpoint -force post_route.dcp" >> $@
+	echo "write_bitstream -force $(TOP).bit" >> $@
+	echo "exit" >> $@
 
