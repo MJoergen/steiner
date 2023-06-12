@@ -20,7 +20,7 @@ begin
 
   steiner_inst : entity work.steiner
     generic map (
-      G_N => 7,
+      G_N => 9,
       G_K => 3,
       G_T => 2
     )

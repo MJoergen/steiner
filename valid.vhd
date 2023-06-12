@@ -75,15 +75,10 @@ architecture synthesis of valid is
 begin
 
   -- Each pair of rows and'ed together contain less than "t" ones.
-  valid_proc : process(all)
-  begin
-    valid_o <= (others => '1');
-    for j in 0 to G_NUM_ROWS-1 loop
-      if count_ones(C_COMBINATIONS(pos_i) and C_COMBINATIONS(j)) >= G_T then
-        valid_o(j) <= '0';
-      end if;
-    end loop;
-  end process valid_proc;
+  valid_gen : for j in 0 to G_NUM_ROWS-1 generate
+    valid_o(j) <= '1' when count_ones(C_COMBINATIONS(pos_i) and C_COMBINATIONS(j)) < G_T
+             else '0';
+  end generate valid_gen;
 
 end architecture synthesis;
 

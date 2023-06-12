@@ -1,6 +1,6 @@
 -- This performs exhaustive brute-force search for Steiner Systems.
 -- https://en.wikipedia.org/wiki/Steiner_system
-
+--
 -- The task is as follows:
 -- Given numbers n > k > t.
 -- Generate all maximal sets of rows where in each set:
@@ -9,10 +9,47 @@
 -- * Each pair of rows and'ed together contain less than "t" ones.
 -- The maximum number of such rows is "b", where
 -- b = B(n,t)/B(k,t).
+--
+-- For the parameters (7, 3, 2) we get 30 solutions.
+--
+-- For the parameters (9, 3, 2) we get 840 solutions, one of which is the following.
+-- The number on the left marks which of the C_NUM_ROWS = 84 is chosen.
+--
+--  6 **......*
+-- 11 *.*....*.
+-- 15 *..*..*..
+-- 18 *...**...
+-- 31 .**...*..
+-- 35 .*.*.*...
+-- 41 .*..*..*.
+-- 49 ..***....
+-- 60 ..*..*..*
+-- 73 ...*...**
+-- 78 ....*.*.*
+-- 80 .....***.
+--
+-- Another solution is:
+--  0 ***......
+-- 13 *..**....
+-- 22 *....**..
+-- 27 *......**
+-- 35 .*.*.*...
+-- 41 .*..*..*.
+-- 47 .*....*.*
+-- 53 ..**....*
+-- 55 ..*.*.*..
+-- 59 ..*..*.*.
+-- 71 ...*..**.
+-- 76 ....**..*
+--
+-- Here we see that b = 36/3 = 12 corresponding to number of rows.
+-- And r = B(n-1,t-1)/B(k-1,t-1) = 8/2 = 4 corresponds to the sum of each column.
 
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.numeric_std.all;
+library std;
+  use std.textio.all;
 
 entity steiner is
   generic (
@@ -42,6 +79,7 @@ architecture synthesis of steiner is
 
   constant C_NUM_ROWS : natural := binom(G_N, G_K);
   constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
+  constant C_R        : natural := binom(G_N-1, G_T-1) / binom(G_K-1, G_T-1);
 
   signal cur_index    : natural range 0 to C_NUM_ROWS;
 
@@ -129,6 +167,23 @@ begin
       end if;
     end if;
   end process main_proc;
+
+  output_proc : process (clk_i)
+    variable l : line;
+  begin
+    if rising_edge(clk_i) then
+      if valid_o = '1' then
+        l := new string'("");
+        for i in 0 to C_B-1 loop
+          if i /= 0 then
+            write(l, ',');
+          end if;
+          write(l, to_string(positions_d(i)));
+        end loop;
+        report (l.all);
+      end if;
+    end if;
+  end process output_proc;
 
 end architecture synthesis;
 
