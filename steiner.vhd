@@ -1,6 +1,8 @@
 -- This performs exhaustive brute-force search for Steiner Systems.
 -- https://en.wikipedia.org/wiki/Steiner_system
 --
+-- This is inspired by this video: https://www.youtube.com/watch?v=4xnRZqD7rAo
+--
 -- The task is as follows:
 -- Given numbers n > k > t.
 -- Generate all maximal sets of rows where in each set:
@@ -168,6 +170,7 @@ begin
     end if;
   end process main_proc;
 
+  -- pragma synthesis_off
   output_proc : process (clk_i)
     variable l : line;
   begin
@@ -184,6 +187,7 @@ begin
       end if;
     end if;
   end process output_proc;
+  -- pragma synthesis_on
 
 end architecture synthesis;
 
