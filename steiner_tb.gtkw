@@ -1,10 +1,10 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Mon Jun 12 12:29:55 2023
+[*] Mon Jun 12 12:53:10 2023
 [*]
 [dumpfile] "/home/mfj/git/PRIVATE/MJoergen/steiner/steiner_tb.ghw"
-[dumpfile_mtime] "Mon Jun 12 12:25:20 2023"
-[dumpfile_size] 2269878
+[dumpfile_mtime] "Mon Jun 12 12:52:37 2023"
+[dumpfile_size] 4390991
 [savefile] "/home/mfj/git/PRIVATE/MJoergen/steiner/steiner_tb.gtkw"
 [timestart] 0
 [size] 1800 1003
@@ -14,7 +14,7 @@
 [treeopen] top.steiner_tb.
 [treeopen] top.steiner_tb.steiner_inst.
 [sst_width] 249
-[signals_width] 329
+[signals_width] 365
 [sst_expanded] 1
 [sst_vpaned_height] 279
 @28
@@ -26,10 +26,10 @@ top.steiner_tb.steiner_inst.done_o
 top.steiner_tb.steiner_inst.cur_index
 top.steiner_tb.steiner_inst.num_placed
 @22
-#{top.steiner_tb.steiner_inst.valid[34:0]} top.steiner_tb.steiner_inst.valid[34] top.steiner_tb.steiner_inst.valid[33] top.steiner_tb.steiner_inst.valid[32] top.steiner_tb.steiner_inst.valid[31] top.steiner_tb.steiner_inst.valid[30] top.steiner_tb.steiner_inst.valid[29] top.steiner_tb.steiner_inst.valid[28] top.steiner_tb.steiner_inst.valid[27] top.steiner_tb.steiner_inst.valid[26] top.steiner_tb.steiner_inst.valid[25] top.steiner_tb.steiner_inst.valid[24] top.steiner_tb.steiner_inst.valid[23] top.steiner_tb.steiner_inst.valid[22] top.steiner_tb.steiner_inst.valid[21] top.steiner_tb.steiner_inst.valid[20] top.steiner_tb.steiner_inst.valid[19] top.steiner_tb.steiner_inst.valid[18] top.steiner_tb.steiner_inst.valid[17] top.steiner_tb.steiner_inst.valid[16] top.steiner_tb.steiner_inst.valid[15] top.steiner_tb.steiner_inst.valid[14] top.steiner_tb.steiner_inst.valid[13] top.steiner_tb.steiner_inst.valid[12] top.steiner_tb.steiner_inst.valid[11] top.steiner_tb.steiner_inst.valid[10] top.steiner_tb.steiner_inst.valid[9] top.steiner_tb.steiner_inst.valid[8] top.steiner_tb.steiner_inst.valid[7] top.steiner_tb.steiner_inst.valid[6] top.steiner_tb.steiner_inst.valid[5] top.steiner_tb.steiner_inst.valid[4] top.steiner_tb.steiner_inst.valid[3] top.steiner_tb.steiner_inst.valid[2] top.steiner_tb.steiner_inst.valid[1] top.steiner_tb.steiner_inst.valid[0]
-@800023
+#{top.steiner_tb.steiner_inst.valid[83:0]} top.steiner_tb.steiner_inst.valid[83] top.steiner_tb.steiner_inst.valid[82] top.steiner_tb.steiner_inst.valid[81] top.steiner_tb.steiner_inst.valid[80] top.steiner_tb.steiner_inst.valid[79] top.steiner_tb.steiner_inst.valid[78] top.steiner_tb.steiner_inst.valid[77] top.steiner_tb.steiner_inst.valid[76] top.steiner_tb.steiner_inst.valid[75] top.steiner_tb.steiner_inst.valid[74] top.steiner_tb.steiner_inst.valid[73] top.steiner_tb.steiner_inst.valid[72] top.steiner_tb.steiner_inst.valid[71] top.steiner_tb.steiner_inst.valid[70] top.steiner_tb.steiner_inst.valid[69] top.steiner_tb.steiner_inst.valid[68] top.steiner_tb.steiner_inst.valid[67] top.steiner_tb.steiner_inst.valid[66] top.steiner_tb.steiner_inst.valid[65] top.steiner_tb.steiner_inst.valid[64] top.steiner_tb.steiner_inst.valid[63] top.steiner_tb.steiner_inst.valid[62] top.steiner_tb.steiner_inst.valid[61] top.steiner_tb.steiner_inst.valid[60] top.steiner_tb.steiner_inst.valid[59] top.steiner_tb.steiner_inst.valid[58] top.steiner_tb.steiner_inst.valid[57] top.steiner_tb.steiner_inst.valid[56] top.steiner_tb.steiner_inst.valid[55] top.steiner_tb.steiner_inst.valid[54] top.steiner_tb.steiner_inst.valid[53] top.steiner_tb.steiner_inst.valid[52] top.steiner_tb.steiner_inst.valid[51] top.steiner_tb.steiner_inst.valid[50] top.steiner_tb.steiner_inst.valid[49] top.steiner_tb.steiner_inst.valid[48] top.steiner_tb.steiner_inst.valid[47] top.steiner_tb.steiner_inst.valid[46] top.steiner_tb.steiner_inst.valid[45] top.steiner_tb.steiner_inst.valid[44] top.steiner_tb.steiner_inst.valid[43] top.steiner_tb.steiner_inst.valid[42] top.steiner_tb.steiner_inst.valid[41] top.steiner_tb.steiner_inst.valid[40] top.steiner_tb.steiner_inst.valid[39] top.steiner_tb.steiner_inst.valid[38] top.steiner_tb.steiner_inst.valid[37] top.steiner_tb.steiner_inst.valid[36] top.steiner_tb.steiner_inst.valid[35] top.steiner_tb.steiner_inst.valid[34] top.steiner_tb.steiner_inst.valid[33] top.steiner_tb.steiner_inst.valid[32] top.steiner_tb.steiner_inst.valid[31] top.steiner_tb.steiner_inst.valid[30] top.steiner_tb.steiner_inst.valid[29] top.steiner_tb.steiner_inst.valid[28] top.steiner_tb.steiner_inst.valid[27] top.steiner_tb.steiner_inst.valid[26] top.steiner_tb.steiner_inst.valid[25] top.steiner_tb.steiner_inst.valid[24] top.steiner_tb.steiner_inst.valid[23] top.steiner_tb.steiner_inst.valid[22] top.steiner_tb.steiner_inst.valid[21] top.steiner_tb.steiner_inst.valid[20] top.steiner_tb.steiner_inst.valid[19] top.steiner_tb.steiner_inst.valid[18] top.steiner_tb.steiner_inst.valid[17] top.steiner_tb.steiner_inst.valid[16] top.steiner_tb.steiner_inst.valid[15] top.steiner_tb.steiner_inst.valid[14] top.steiner_tb.steiner_inst.valid[13] top.steiner_tb.steiner_inst.valid[12] top.steiner_tb.steiner_inst.valid[11] top.steiner_tb.steiner_inst.valid[10] top.steiner_tb.steiner_inst.valid[9] top.steiner_tb.steiner_inst.valid[8] top.steiner_tb.steiner_inst.valid[7] top.steiner_tb.steiner_inst.valid[6] top.steiner_tb.steiner_inst.valid[5] top.steiner_tb.steiner_inst.valid[4] top.steiner_tb.steiner_inst.valid[3] top.steiner_tb.steiner_inst.valid[2] top.steiner_tb.steiner_inst.valid[1] top.steiner_tb.steiner_inst.valid[0]
+@800022
 #{top.steiner_tb.steiner_inst.positions[0:11]} top.steiner_tb.steiner_inst.positions[0] top.steiner_tb.steiner_inst.positions[1] top.steiner_tb.steiner_inst.positions[2] top.steiner_tb.steiner_inst.positions[3] top.steiner_tb.steiner_inst.positions[4] top.steiner_tb.steiner_inst.positions[5] top.steiner_tb.steiner_inst.positions[6] top.steiner_tb.steiner_inst.positions[7] top.steiner_tb.steiner_inst.positions[8] top.steiner_tb.steiner_inst.positions[9] top.steiner_tb.steiner_inst.positions[10] top.steiner_tb.steiner_inst.positions[11]
-@421
+@420
 top.steiner_tb.steiner_inst.positions[0]
 top.steiner_tb.steiner_inst.positions[1]
 top.steiner_tb.steiner_inst.positions[2]
@@ -42,7 +42,7 @@ top.steiner_tb.steiner_inst.positions[8]
 top.steiner_tb.steiner_inst.positions[9]
 top.steiner_tb.steiner_inst.positions[10]
 top.steiner_tb.steiner_inst.positions[11]
-@1001201
+@1001200
 -group_end
 @c00022
 #{top.steiner_tb.steiner_inst.positions_d[0:11]} top.steiner_tb.steiner_inst.positions_d[0] top.steiner_tb.steiner_inst.positions_d[1] top.steiner_tb.steiner_inst.positions_d[2] top.steiner_tb.steiner_inst.positions_d[3] top.steiner_tb.steiner_inst.positions_d[4] top.steiner_tb.steiner_inst.positions_d[5] top.steiner_tb.steiner_inst.positions_d[6] top.steiner_tb.steiner_inst.positions_d[7] top.steiner_tb.steiner_inst.positions_d[8] top.steiner_tb.steiner_inst.positions_d[9] top.steiner_tb.steiner_inst.positions_d[10] top.steiner_tb.steiner_inst.positions_d[11]
@@ -63,7 +63,5 @@ top.steiner_tb.steiner_inst.positions_d[11]
 -group_end
 @420
 top.steiner_tb.count
-@28
-top.steiner_tb.steiner_inst.col_count_ok
 [pattern_trace] 1
 [pattern_trace] 0

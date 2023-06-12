@@ -7,7 +7,7 @@ TB = steiner_tb
 
 all:
 	ghdl -a --std=08 $(SRC) $(TB).vhd
-	ghdl -r --std=08 $(TB) --stop-time=10000ms --wave=$(TB).ghw
+	ghdl -r --std=08 $(TB) --stop-time=1100ms --wave=$(TB).ghw
 
 show:
 	gtkwave $(TB).ghw $(TB).gtkw
