@@ -1,5 +1,6 @@
 XILINX_DIR = /opt/Xilinx/2025.1/Vivado
-SRC  = valid.vhd
+SRC  = steiner_pkg.vhd
+SRC += valid.vhd
 SRC += steiner.vhd
 TOP = nexys4ddr
 
@@ -25,9 +26,8 @@ help:
 
 sim:
 	ghdl -a --std=08 $(SRC) $(TB).vhd
-	set -o pipefail; ghdl -r --std=08 $(TB) -gG_N=$(N) -gG_K=$(K) -gG_T=$(T) \
-		--assert-level=error --wave=$(TB).ghw | tee $(TB).log
-	@grep '^steiner\.vhd:.*(report note): ' $(TB).log | sed 's/.*note): //; s/,/, /g; s/^/[/; s/$$/]/' > $(TB).txt
+	ghdl -r --std=08 $(TB) -gG_N=$(N) -gG_K=$(K) -gG_T=$(T) \
+		--assert-level=error --wave=$(TB).ghw
 	@if [ ! -f $(RESULT) ]; then \
 		echo "WARNING: $(RESULT) not found. Found $$(wc -l < $(TB).txt) solutions, not checked."; \
 	elif diff -q $(TB).txt $(RESULT) > /dev/null; then \

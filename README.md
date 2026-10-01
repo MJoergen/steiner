@@ -76,8 +76,10 @@ in increasing index order and stops when `b` rows have been placed.
 
   The search backtracks right away when no compatible rows are left.
 
-  When all `b` rows are placed, `valid_o` pulses for one clock cycle. When the whole
-  search space has been covered, `done_o` goes high.
+  When all `b` rows are placed, the solution is sent out on an AXI-style stream
+  (`m_valid_o`, `m_ready_i` and `m_data_o`), one solution at a time. If the previous
+  solution hasn't been accepted yet, the search waits. When the whole search space
+  has been covered and the last solution has been accepted, `done_o` goes high.
 
 The search also prunes branches early. Each column appears in exactly `r` rows, and
 rows are placed in increasing order. So the first `r` placed rows must all have
@@ -90,6 +92,7 @@ once.
 | File               | Description                                              |
 |--------------------|----------------------------------------------------------|
 | `steiner.vhd`      | Top level: search state machine                          |
+| `steiner_pkg.vhd`  | Solution type and binomial coefficient function          |
 | `valid.vhd`        | Compatibility lookup for a single placed row             |
 | `steiner_tb.vhd`   | Testbench that runs the search to completion             |
 | `nexys4ddr.vhd`    | Top level for the Nexys 4 DDR board: clock and reset     |
@@ -118,18 +121,22 @@ You need [GHDL](https://github.com/ghdl/ghdl) to simulate and
 make sim
 ```
 
-The simulation prints each solution as a report note, for example:
+The testbench prints each solution as a report note, for example:
 
 ```
-steiner.vhd:202:9:@4175ns:(report note): 0,13,22,27,35,41,47,53,55,59,71,76
+steiner_tb.vhd:85:9:@4175ns:(report note): [0, 13, 22, 27, 35, 41, 47, 53, 55, 59, 71, 76]
 ```
+
+The testbench holds `m_ready_i` low for random periods, to check that the search
+waits for each solution to be accepted.
 
 The clock stops when `done_o` goes high, which ends the simulation. With the
 default parameters `(9, 3, 2)` this happens after about 9.9 ms of simulated time,
 or roughly one million clock cycles.
 
-The solutions are also written to `steiner_tb.txt` in the same format as the
-results files, and compared with `result_N_K_T.txt`. `make sim` fails if:
+The testbench also writes the solutions to `steiner_tb.txt` in the same format as
+the results files, and `make sim` compares them with `result_N_K_T.txt`. `make sim`
+fails if:
 
 * the simulation reports an error,
 * the search hasn't finished after `G_TIMEOUT` (1100 ms of simulated time, set in
@@ -167,9 +174,10 @@ the build stops with an error and writes no bitstream. The timing report is in
   The search starts when the MMCM has locked, and starts again whenever you press
   the button.
 
-`valid_o` drives LED0 and `done_o` drives LED1. The search parameters for the board
-are set in the `generic map` in `nexys4ddr.vhd`. The individual solutions are only
-printed in simulation.
+`m_valid_o` drives LED0 and `done_o` drives LED1. `m_ready_i` is tied high and
+`m_data_o` is left unconnected, so the individual solutions are only printed in
+simulation. The search parameters for the board are set in the `generic map` in
+`nexys4ddr.vhd`.
 
 The amount of logic grows roughly as `b × B(n,k)`, so larger parameter sets quickly
 become too big for the FPGA.

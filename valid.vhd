@@ -1,6 +1,8 @@
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.numeric_std.all;
+library work;
+  use work.steiner_pkg.all;
 
 entity valid is
   generic (
@@ -16,16 +18,6 @@ entity valid is
 end entity valid;
 
 architecture synthesis of valid is
-
-  -- Calculate the binomial coefficient B(n,k)
-  pure function binom(n : natural; k : natural) return natural is
-    variable res : natural := 1;
-  begin
-    for i in 1 to k loop
-      res := (res * (n+1-i)) / i;
-    end loop;
-    return res;
-  end function binom;
 
   -- Count number of 1's in a vector
   pure function count_ones(arg : std_logic_vector) return natural is

@@ -20,7 +20,8 @@
 @28
 top.steiner_tb.steiner_inst.clk_i
 top.steiner_tb.steiner_inst.rst_i
-top.steiner_tb.steiner_inst.valid_o
+top.steiner_tb.steiner_inst.m_valid_o
+top.steiner_tb.steiner_inst.m_ready_i
 top.steiner_tb.steiner_inst.done_o
 @420
 top.steiner_tb.steiner_inst.cur_index
@@ -45,20 +46,20 @@ top.steiner_tb.steiner_inst.positions[11]
 @1001200
 -group_end
 @c00022
-#{top.steiner_tb.steiner_inst.positions_d[0:11]} top.steiner_tb.steiner_inst.positions_d[0] top.steiner_tb.steiner_inst.positions_d[1] top.steiner_tb.steiner_inst.positions_d[2] top.steiner_tb.steiner_inst.positions_d[3] top.steiner_tb.steiner_inst.positions_d[4] top.steiner_tb.steiner_inst.positions_d[5] top.steiner_tb.steiner_inst.positions_d[6] top.steiner_tb.steiner_inst.positions_d[7] top.steiner_tb.steiner_inst.positions_d[8] top.steiner_tb.steiner_inst.positions_d[9] top.steiner_tb.steiner_inst.positions_d[10] top.steiner_tb.steiner_inst.positions_d[11]
+#{top.steiner_tb.steiner_inst.m_data_o[0:11]} top.steiner_tb.steiner_inst.m_data_o[0] top.steiner_tb.steiner_inst.m_data_o[1] top.steiner_tb.steiner_inst.m_data_o[2] top.steiner_tb.steiner_inst.m_data_o[3] top.steiner_tb.steiner_inst.m_data_o[4] top.steiner_tb.steiner_inst.m_data_o[5] top.steiner_tb.steiner_inst.m_data_o[6] top.steiner_tb.steiner_inst.m_data_o[7] top.steiner_tb.steiner_inst.m_data_o[8] top.steiner_tb.steiner_inst.m_data_o[9] top.steiner_tb.steiner_inst.m_data_o[10] top.steiner_tb.steiner_inst.m_data_o[11]
 @420
-top.steiner_tb.steiner_inst.positions_d[0]
-top.steiner_tb.steiner_inst.positions_d[1]
-top.steiner_tb.steiner_inst.positions_d[2]
-top.steiner_tb.steiner_inst.positions_d[3]
-top.steiner_tb.steiner_inst.positions_d[4]
-top.steiner_tb.steiner_inst.positions_d[5]
-top.steiner_tb.steiner_inst.positions_d[6]
-top.steiner_tb.steiner_inst.positions_d[7]
-top.steiner_tb.steiner_inst.positions_d[8]
-top.steiner_tb.steiner_inst.positions_d[9]
-top.steiner_tb.steiner_inst.positions_d[10]
-top.steiner_tb.steiner_inst.positions_d[11]
+top.steiner_tb.steiner_inst.m_data_o[0]
+top.steiner_tb.steiner_inst.m_data_o[1]
+top.steiner_tb.steiner_inst.m_data_o[2]
+top.steiner_tb.steiner_inst.m_data_o[3]
+top.steiner_tb.steiner_inst.m_data_o[4]
+top.steiner_tb.steiner_inst.m_data_o[5]
+top.steiner_tb.steiner_inst.m_data_o[6]
+top.steiner_tb.steiner_inst.m_data_o[7]
+top.steiner_tb.steiner_inst.m_data_o[8]
+top.steiner_tb.steiner_inst.m_data_o[9]
+top.steiner_tb.steiner_inst.m_data_o[10]
+top.steiner_tb.steiner_inst.m_data_o[11]
 @1401200
 -group_end
 @420

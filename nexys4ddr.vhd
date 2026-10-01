@@ -71,10 +71,12 @@ begin
       G_T => 2
     )
     port map (
-      clk_i   => clk,
-      rst_i   => rst_sync(1),
-      valid_o => valid_o,
-      done_o  => done_o
+      clk_i     => clk,
+      rst_i     => rst_sync(1),
+      m_valid_o => valid_o,
+      m_ready_i => '1',
+      m_data_o  => open,
+      done_o    => done_o
     ); -- steiner_inst
 
 end architecture synthesis;

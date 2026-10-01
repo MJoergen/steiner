@@ -50,8 +50,8 @@
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.numeric_std.all;
-library std;
-  use std.textio.all;
+library work;
+  use work.steiner_pkg.all;
 
 entity steiner is
   generic (
@@ -60,24 +60,18 @@ entity steiner is
     G_T : natural := 2
   );
   port (
-    clk_i   : in  std_logic;
-    rst_i   : in  std_logic;
-    valid_o : out std_logic := '0';
-    done_o  : out std_logic := '0'
+    clk_i     : in  std_logic;
+    rst_i     : in  std_logic;
+    -- AXI-style stream with one solution at a time
+    m_valid_o : out std_logic := '0';
+    m_ready_i : in  std_logic;
+    m_data_o  : out solution_t(0 to binom(G_N, G_T) / binom(G_K, G_T) - 1);
+    -- The search is finished and the last solution has been accepted
+    done_o    : out std_logic := '0'
   );
 end entity steiner;
 
 architecture synthesis of steiner is
-
-  -- Calculate the binomial coefficient B(n,k)
-  pure function binom(n : natural; k : natural) return natural is
-    variable res : natural := 1;
-  begin
-    for i in 1 to k loop
-      res := (res * (n+1-i)) / i;
-    end loop;
-    return res;
-  end function binom;
 
   constant C_NUM_ROWS : natural := binom(G_N, G_K);
   constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
@@ -89,7 +83,6 @@ architecture synthesis of steiner is
 
   type pos_t is array (natural range <>) of natural range 0 to C_NUM_ROWS;
   signal positions    : pos_t(0 to C_B-1) := (others => C_NUM_ROWS);
-  signal positions_d  : pos_t(0 to C_B-1);
   signal num_placed   : natural range 0 to C_B;
 
   type valid_t is array (natural range <>) of std_logic_vector(C_NUM_ROWS-1 downto 0);
@@ -142,15 +135,21 @@ begin
   main_proc : process (clk_i)
   begin
     if rising_edge(clk_i) then
-      valid_o <= '0';
+      if m_ready_i = '1' then
+        m_valid_o <= '0';
+      end if;
+
       if remove = '1' then
         cur_index <= positions(num_placed) + 1;
         positions(num_placed) <= C_NUM_ROWS;
         remove <= '0';
+      elsif num_placed = C_B and m_valid_o = '1' and m_ready_i = '0' then
+        -- The previous solution has not been accepted yet, so wait
+        null;
       else
         if num_placed = C_B then
-          positions_d <= positions;
-          valid_o     <= '1';
+          m_data_o  <= solution_t(positions);
+          m_valid_o <= '1';
           -- We remove the previous piece
           num_placed <= num_placed - 1;
           remove     <= '1';
@@ -169,7 +168,7 @@ begin
               -- We remove the previous piece
               num_placed <= num_placed - 1;
               remove     <= '1';
-            else
+            elsif m_valid_o = '0' then
               done_o <= '1';
             end if;
           end if;
@@ -182,28 +181,10 @@ begin
         cur_index  <= 0;
         done_o     <= '0';
         remove     <= '0';
+        m_valid_o  <= '0';
       end if;
     end if;
   end process main_proc;
-
-  -- pragma synthesis_off
-  output_proc : process (clk_i)
-    variable l : line;
-  begin
-    if rising_edge(clk_i) then
-      if valid_o = '1' then
-        l := new string'("");
-        for i in 0 to C_B-1 loop
-          if i /= 0 then
-            write(l, ',');
-          end if;
-          write(l, to_string(positions_d(i)));
-        end loop;
-        report (l.all);
-      end if;
-    end if;
-  end process output_proc;
-  -- pragma synthesis_on
 
 end architecture synthesis;
 
