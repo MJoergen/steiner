@@ -107,7 +107,7 @@ Running `make` on its own shows the available targets:
 ```
 make help        Show this help text (default)
 make sim         Simulate the design using GHDL, writing steiner_tb.ghw
-                 and checking the solutions against result_9_3_2.txt
+                 and checking each solution
 make show        Show the simulation waveform using GTKWave
 make vivado      Synthesize the design using Vivado, writing nexys4ddr.bit
 ```
@@ -124,27 +124,33 @@ make sim
 The testbench prints each solution as a report note, for example:
 
 ```
-steiner_tb.vhd:85:9:@4175ns:(report note): [0, 13, 22, 27, 35, 41, 47, 53, 55, 59, 71, 76]
+steiner_tb.vhd:148:9:@4175ns:(report note): [0, 13, 22, 27, 35, 41, 47, 53, 55, 59, 71, 76]
 ```
 
 The testbench holds `m_ready_i` low for random periods, to check that the search
 waits for each solution to be accepted.
 
 The clock stops when `done_o` goes high, which ends the simulation. With the
-default parameters `(9, 3, 2)` this happens after about 9.9 ms of simulated time,
+default parameters `(9, 3, 2)` this happens after about 10.7 ms of simulated time,
 or roughly one million clock cycles.
 
-The testbench also writes the solutions to `steiner_tb.txt` in the same format as
-the results files, and `make sim` compares them with `result_N_K_T.txt`. `make sim`
-fails if:
+The testbench checks each solution as it arrives, using its own table of rows
+rather than the one in `valid.vhd`. `make sim` fails if:
 
-* the simulation reports an error,
+* a row index is out of range, or the row indices aren't strictly increasing,
+* two rows in a solution share `t` or more ones,
+* a solution doesn't come after the previous one in lexicographic order, which
+  would mean a solution was sent twice,
 * the search hasn't finished after `G_TIMEOUT` (1100 ms of simulated time, set in
   `steiner_tb.vhd`), or
-* the solutions differ from the results file.
+* the number of solutions is wrong for one of the known results.
 
-If there is no results file for the parameters, the solutions are not checked and
-`make sim` prints a warning.
+For other parameters the testbench prints the number of solutions as a warning,
+because it doesn't know the expected number. If you find a new result, add it to
+`expected_count` in `steiner_tb.vhd`.
+
+The testbench also writes the solutions to `steiner_tb.txt` in the same format as
+the results files.
 
 To search for other parameters, set `N`, `K` and `T` on the command line:
 
