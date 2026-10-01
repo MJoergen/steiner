@@ -1,0 +1,19 @@
+# GHDL simulation
+*.cf
+*.o
+*.ghw
+steiner_tb
+
+# Vivado synthesis
+.Xil/
+nexys4ddr.tcl
+*.bit
+*.dcp
+*.rpt
+*.jou
+*.log
+clockInfo.txt
+usage_statistics_webtalk.*
+
+# Editors
+*.swp
