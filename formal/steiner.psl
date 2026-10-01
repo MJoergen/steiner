@@ -1,0 +1,169 @@
+vunit i_steiner(steiner(synthesis))
+{
+   -- Number of slots in "positions" that currently hold a row. While "remove"
+   -- is set, the slot at "num_placed" still holds the row being removed.
+   signal f_num_used : natural range 0 to C_B+1;
+
+   -- Structural invariants of "positions", computed below.
+   signal f_used_in_range : std_logic;
+   signal f_unused_empty  : std_logic;
+   signal f_sorted        : std_logic;
+   signal f_compatible    : std_logic;
+   signal f_cur_index_after : std_logic;
+
+   -- The rows compatible with each row of the output solution
+   signal f_data_pos      : pos_t(0 to C_B-1);
+   signal f_data_valid    : valid_t(C_B-1 downto 0);
+
+   -- Properties of the output solution, computed below.
+   signal f_data_in_range : std_logic;
+   signal f_data_sorted   : std_logic;
+   signal f_data_compatible : std_logic;
+
+
+   -- set all declarations to run on clk_i
+   default clock is rising_edge(clk_i);
+
+
+   -----------------------------
+   -- ASSERTIONS ABOUT OUTPUTS
+   -----------------------------
+
+   -- Nothing is output right after reset
+   f_after_reset : assert always {rst_i} |=> {not m_valid_o and not done_o};
+
+   -- Output must be stable until accepted
+   f_output_stable : assert always {m_valid_o and not m_ready_i and not rst_i} |=> {stable(m_valid_o) and stable(m_data_o)};
+
+   -- Once the search is finished, it stays finished until the next reset
+   f_done_stable : assert always {done_o and not rst_i} |=> {done_o};
+
+   -- The search is only finished when the last solution has been accepted
+   f_done_not_valid : assert always {done_o and not rst_i} |-> {not m_valid_o};
+
+
+   -- Each solution output is valid: a set of C_B rows, all different and in
+   -- increasing order, where every two rows are compatible. The rows are
+   -- checked with separate instances of the valid module.
+   f_data_gen : for i in 0 to C_B-1 generate
+      f_data_pos(i) <= m_data_o(i) when m_data_o(i) < C_NUM_ROWS else C_NUM_ROWS;
+
+      f_valid_inst : entity work.valid
+         generic map (
+            G_N        => G_N,
+            G_K        => G_K,
+            G_T        => G_T,
+            G_NUM_ROWS => C_NUM_ROWS
+         )
+         port map (
+            pos_i   => f_data_pos(i),
+            valid_o => f_data_valid(i)
+         );
+   end generate f_data_gen;
+
+   p_data : process (all)
+   begin
+      f_data_in_range   <= '1';
+      f_data_sorted     <= '1';
+      f_data_compatible <= '1';
+      for i in 0 to C_B-1 loop
+         if m_data_o(i) >= C_NUM_ROWS then
+            f_data_in_range <= '0';
+         end if;
+         if i > 0 and m_data_o(i-1) >= m_data_o(i) then
+            f_data_sorted <= '0';
+         end if;
+         for j in 0 to i-1 loop
+            if f_data_valid(j)(f_data_pos(i)) = '0' then
+               f_data_compatible <= '0';
+            end if;
+         end loop;
+      end loop;
+   end process p_data;
+
+   f_data_in_range_a   : assert always {m_valid_o and not rst_i} |-> {f_data_in_range};
+   f_data_sorted_a     : assert always {m_valid_o and not rst_i} |-> {f_data_sorted};
+   f_data_compatible_a : assert always {m_valid_o and not rst_i} |-> {f_data_compatible};
+
+
+   -----------------------------
+   -- ASSERTIONS ABOUT INTERNAL STATE
+   -----------------------------
+
+   f_num_used <= num_placed + 1 when remove = '1' else num_placed;
+
+   p_invariants : process (all)
+   begin
+      f_used_in_range <= '1';
+      f_unused_empty  <= '1';
+      f_sorted        <= '1';
+      f_compatible    <= '1';
+      f_cur_index_after <= '1';
+      for i in 0 to C_B-1 loop
+         if i < f_num_used then
+            -- Every slot in use holds a row
+            if positions(i) >= C_NUM_ROWS then
+               f_used_in_range <= '0';
+            end if;
+            -- The rows are placed in strictly increasing order
+            if i > 0 and positions(i-1) >= positions(i) then
+               f_sorted <= '0';
+            end if;
+            -- The next candidate is never before the most recently placed row
+            if i = num_placed-1 and remove = '0' and cur_index < positions(i) then
+               f_cur_index_after <= '0';
+            end if;
+            -- Every row is compatible with all the rows placed before it
+            for j in 0 to i-1 loop
+               if valid_vec(j)(positions(i)) = '0' then
+                  f_compatible <= '0';
+               end if;
+            end loop;
+         else
+            -- Every slot not in use is empty
+            if positions(i) /= C_NUM_ROWS then
+               f_unused_empty <= '0';
+            end if;
+         end if;
+      end loop;
+   end process p_invariants;
+
+   -- These are written as "{not rst_i} |-> {...}" rather than "{...} abort rst_i",
+   -- because GHDL does not mask a single-cycle check with abort, and the
+   -- registers are undefined during the first (reset) cycle.
+   f_num_placed_range : assert always {not rst_i} |-> {num_placed <= C_B};
+   f_cur_index_range  : assert always {not rst_i} |-> {cur_index <= C_NUM_ROWS};
+   f_remove_not_full  : assert always {remove and not rst_i} |-> {num_placed < C_B};
+
+   f_used_in_range_a : assert always {not rst_i} |-> {f_used_in_range};
+   f_unused_empty_a  : assert always {not rst_i} |-> {f_unused_empty};
+   f_sorted_a        : assert always {not rst_i} |-> {f_sorted};
+   f_compatible_a    : assert always {not rst_i} |-> {f_compatible};
+
+   -- When the search is finished, nothing is placed and every row has been tried
+   f_done_idle : assert always {done_o and not rst_i} |->
+      {num_placed = 0 and remove = '0' and cur_index = C_NUM_ROWS};
+
+   -- The next candidate is never before the most recently placed row
+   f_cur_index_after_a : assert always {not rst_i} |-> {f_cur_index_after};
+
+
+   -----------------------------
+   -- ASSUMPTIONS ABOUT INPUTS
+   -----------------------------
+
+   -- Require reset at startup.
+   f_reset : assume {rst_i};
+
+
+   --------------------------------------------
+   -- COVER STATEMENTS TO VERIFY REACHABILITY
+   --------------------------------------------
+
+   -- A solution is found and accepted
+   f_solution : cover {m_valid_o and m_ready_i and not rst_i};
+
+   -- The whole search finishes
+   f_done : cover {done_o and not rst_i};
+
+} -- vunit i_steiner(steiner(synthesis))

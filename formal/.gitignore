@@ -1,0 +1,4 @@
+# SymbiYosys artifacts: one directory per task (<dut>_<task>/) and one status
+# database per job (<dut>/). Everything tracked in this directory is a file
+# directly in it, so ignoring all subdirectories is safe.
+*/

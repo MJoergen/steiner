@@ -148,7 +148,11 @@ begin
         null;
       else
         if num_placed = C_B then
-          m_data_o  <= solution_t(positions);
+          -- Copied element by element, because GHDL synthesis (used for formal
+          -- verification) crashes on the array type conversion solution_t(positions).
+          for i in positions'range loop
+            m_data_o(i) <= positions(i);
+          end loop;
           m_valid_o <= '1';
           -- We remove the previous piece
           num_placed <= num_placed - 1;
