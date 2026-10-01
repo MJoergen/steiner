@@ -14,6 +14,7 @@ nexys4ddr.tcl
 *.jou
 *.log
 clockInfo.txt
+tight_setup_hold_pins.txt
 usage_statistics_webtalk.*
 
 # Editors

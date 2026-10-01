@@ -1,6 +1,6 @@
 -- This is the top level file for the Nexys 4 DDR board.
--- * It generates a 90 MHz clock from the 100 MHz board clock, because the search
---   logic does not meet timing at 100 MHz.
+-- * It generates a 180 MHz clock from the 100 MHz board clock. This is the fastest
+--   clock where the search logic meets timing with some margin.
 -- * It converts the active-low reset button into a synchronous active-high reset.
 
 library ieee;
@@ -22,7 +22,7 @@ architecture synthesis of nexys4ddr is
 
   signal clkfb    : std_logic;
   signal clk_mmcm : std_logic;
-  signal clk      : std_logic;   -- 90 MHz
+  signal clk      : std_logic;   -- 180 MHz
   signal locked   : std_logic;
 
   -- Synchronize the asynchronous reset button to the clock
@@ -33,13 +33,13 @@ architecture synthesis of nexys4ddr is
 
 begin
 
-  -- VCO = 100 MHz * 9 / 1 = 900 MHz. Output = 900 MHz / 10 = 90 MHz.
+  -- VCO = 100 MHz * 9 / 1 = 900 MHz. Output = 900 MHz / 5 = 180 MHz.
   mmcm_inst : component mmcme2_base
     generic map (
       CLKIN1_PERIOD    => 10.0,
       DIVCLK_DIVIDE    => 1,
       CLKFBOUT_MULT_F  => 9.0,
-      CLKOUT0_DIVIDE_F => 10.0
+      CLKOUT0_DIVIDE_F => 5.0
     )
     port map (
       clkin1   => clk_i,

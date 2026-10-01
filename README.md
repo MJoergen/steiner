@@ -63,18 +63,23 @@ The design does a depth-first search with backtracking. It places rows one at a 
 in increasing index order and stops when `b` rows have been placed.
 
 * `valid.vhd`: At elaboration time this computes a constant table of all `B(n,k)`
-  rows. Given the index of one placed row, it outputs a bit vector that shows which
-  of the `B(n,k)` rows can sit next to it, meaning they share fewer than `t` ones
-  with it. The logic is purely combinational.
-* `steiner.vhd`: Creates one `valid` instance for each of the `b` row slots and ANDs
-  their outputs together. The result is the set of rows that are compatible with
-  every row placed so far. Each clock cycle the state machine does one of three
-  things:
-  * places the current candidate if it is compatible,
-  * moves on to the next candidate, or
-  * removes the most recently placed row and continues searching after it.
+  rows, and of which pairs of rows share `t` or more ones. Given one selected row as
+  a one-hot vector, it outputs a bit vector that shows which of the `B(n,k)` rows
+  can sit next to it, meaning they share fewer than `t` ones with it. The logic is
+  purely combinational, and each output bit is just a small OR.
+* `steiner.vhd`: Keeps a register `cand` with one bit for each of the `B(n,k)` rows.
+  It holds the rows that can still be tried for the current position: the rows
+  after the previously placed row that fit with every row placed so far. Each clock
+  cycle the state machine does one of three things:
+  * places the first row in `cand`, and ANDs `cand` with the output of `valid` for
+    that row,
+  * removes the most recently placed row when `cand` is empty, and restores `cand`
+    from a stack, or
+  * sends a solution, when all `b` rows are placed, and then removes the last row.
 
-  The search backtracks right away when no compatible rows are left.
+  So each clock cycle visits one node of the search tree, and no time is spent
+  stepping past rows that don't fit. The stack has one entry for each placed row,
+  holding the row index and the rows still left to try in its place.
 
   When all `b` rows are placed, the solution is sent out on an AXI-style stream
   (`m_valid_o`, `m_ready_i` and `m_data_o`), one solution at a time. If the previous
@@ -87,13 +92,30 @@ column 0 set. Column 1 has already shared one row with column 0, so the next `r-
 rows must all have column 1 set. Any branch that breaks this rule is dropped at
 once.
 
+### Timing
+
+The search logic is one loop: `cand` → find its first row → look up which rows
+fit with it → `cand`. These things keep that loop short:
+
+* The first row in `cand` is found with carry chains, as `x and -x`. The rows are
+  split into three segments at the pruning boundaries above, so each carry chain
+  is short. Each segment gets its own `valid` lookup, and only afterwards are the
+  results combined, using whether the earlier segments are empty.
+* The same per-segment "any row left" signals decide whether to place a row or
+  backtrack.
+* Values derived from the number of placed rows (empty, full, the pruning limits)
+  are kept in registers.
+* The stack is only read at the top, so it's held in distributed RAM. Writes to it
+  are delayed by one clock cycle, with a bypass for when a row is removed right
+  after being placed.
+
 ## Files
 
 | File               | Description                                              |
 |--------------------|----------------------------------------------------------|
 | `steiner.vhd`      | Top level: search state machine                          |
 | `steiner_pkg.vhd`  | Solution type and binomial coefficient function          |
-| `valid.vhd`        | Compatibility lookup for a single placed row             |
+| `valid.vhd`        | Compatibility lookup for a single selected row           |
 | `steiner_tb.vhd`   | Testbench that runs the search to completion             |
 | `nexys4ddr.vhd`    | Top level for the Nexys 4 DDR board: clock and reset     |
 | `steiner_tb.gtkw`  | GTKWave layout for viewing the simulation waveform       |
@@ -131,8 +153,8 @@ The testbench holds `m_ready_i` low for random periods, to check that the search
 waits for each solution to be accepted.
 
 The clock stops when `done_o` goes high, which ends the simulation. With the
-default parameters `(9, 3, 2)` this happens after about 10.7 ms of simulated time,
-or roughly one million clock cycles.
+default parameters `(9, 3, 2)` this happens after about 1.4 ms of simulated time,
+or roughly 140,000 clock cycles.
 
 The testbench checks each solution as it arrives, using its own table of rows
 rather than the one in `valid.vhd`. `make sim` fails if:
@@ -172,10 +194,12 @@ make vivado XILINX_DIR=/path/to/Vivado
 The build targets the Artix-7 `xc7a100tcsg324-1` on the Nexys 4 DDR board, and
 writes the bitstream to `nexys4ddr.bit`. If the routed design doesn't meet timing,
 the build stops with an error and writes no bitstream. The timing report is in
-`nexys4ddr_timing.rpt`. The top level `nexys4ddr.vhd`:
+`nexys4ddr_timing.rpt`. Synthesis flattens the hierarchy, and placement and
+routing use the more aggressive timing directives. The top level `nexys4ddr.vhd`:
 
-* uses an MMCM to make a 90 MHz clock from the 100 MHz board clock, because the
-  search logic doesn't meet timing at 100 MHz, and
+* uses an MMCM to make a 180 MHz clock from the 100 MHz board clock, which is the
+  fastest clock where the search logic meets timing with some margin (builds start
+  to fail at around 187.5 MHz), and
 * turns the active-low `CPU_RESETN` button into a synchronous active-high reset.
   The search starts when the MMCM has locked, and starts again whenever you press
   the button.

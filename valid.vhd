@@ -9,10 +9,17 @@ entity valid is
     G_N        : natural;
     G_K        : natural;
     G_T        : natural;
-    G_NUM_ROWS : natural
+    G_NUM_ROWS : natural;
+    -- The range of rows that can be selected
+    G_FIRST    : natural;
+    G_LAST     : natural
   );
   port (
-    pos_i   : in  natural range 0 to G_NUM_ROWS;
+    -- One-hot (or all zero) selection of a single row
+    sel_i   : in  std_logic_vector(G_LAST downto G_FIRST);
+    -- The rows that can sit next to the selected row. All ones if no row is selected.
+    -- Only the selected row and the rows after it are checked. The rows before it are
+    -- always shown as valid, because the search never places them after this row.
     valid_o : out std_logic_vector(G_NUM_ROWS-1 downto 0)
   );
 end entity valid;
@@ -36,7 +43,7 @@ architecture synthesis of valid is
 
   -- This calculates an array of all possible combinations of N choose K.
   pure function combination_init(n : natural; k : natural) return ram_t is
-    variable res : ram_t(G_NUM_ROWS downto 0) := (others => (others => '0'));
+    variable res : ram_t(G_NUM_ROWS-1 downto 0) := (others => (others => '0'));
     variable kk  : natural := k;
     variable ii  : natural := 0;
   begin
@@ -61,15 +68,47 @@ architecture synthesis of valid is
     return res;
   end function combination_init;
 
-  -- Each row contains exactly "k" ones, except the last which is just zero.
-  constant C_COMBINATIONS : ram_t(G_NUM_ROWS downto 0) := combination_init(G_N, G_K);
+  -- Each row contains exactly "k" ones.
+  constant C_COMBINATIONS : ram_t(G_NUM_ROWS-1 downto 0) := combination_init(G_N, G_K);
+
+  -- Each pair of rows and'ed together contain less than "t" ones. Entry "j" in this
+  -- table shows the rows that conflict with row "j", meaning they break this rule.
+  type conflict_t is array (natural range <>) of std_logic_vector(G_NUM_ROWS-1 downto 0);
+
+  pure function conflict_init return conflict_t is
+    variable res : conflict_t(G_NUM_ROWS-1 downto 0);
+  begin
+    for j in 0 to G_NUM_ROWS-1 loop
+      for i in 0 to G_NUM_ROWS-1 loop
+        if count_ones(C_COMBINATIONS(i) and C_COMBINATIONS(j)) >= G_T then
+          res(j)(i) := '1';
+        else
+          res(j)(i) := '0';
+        end if;
+      end loop;
+    end loop;
+    return res;
+  end function conflict_init;
+
+  constant C_CONFLICT : conflict_t(G_NUM_ROWS-1 downto 0) := conflict_init;
 
 begin
 
-  -- Each pair of rows and'ed together contain less than "t" ones.
+  -- Row j is valid unless the selected row conflicts with it. Since the selection is
+  -- one-hot, this is a small OR over just the rows that conflict with row j, rather
+  -- than a lookup indexed by a binary row number.
   valid_gen : for j in 0 to G_NUM_ROWS-1 generate
-    valid_o(j) <= '1' when count_ones(C_COMBINATIONS(pos_i) and C_COMBINATIONS(j)) < G_T
-             else '0';
+    process (all)
+      variable tmp : std_logic;
+    begin
+      tmp := '0';
+      for i in G_FIRST to minimum(j, G_LAST) loop
+        if C_CONFLICT(j)(i) = '1' then
+          tmp := tmp or sel_i(i);
+        end if;
+      end loop;
+      valid_o(j) <= not tmp;
+    end process;
   end generate valid_gen;
 
 end architecture synthesis;

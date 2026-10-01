@@ -43,12 +43,12 @@ $(TOP).tcl: Makefile
 	echo "# This is a tcl command script for the Vivado tool chain" > $@
 	echo "read_vhdl -vhdl2008 { $(SRC) $(TOP).vhd }" >> $@
 	echo "read_xdc $(TOP).xdc" >> $@
-	echo "synth_design -top $(TOP) -part xc7a100tcsg324-1 -flatten_hierarchy none" >> $@
+	echo "synth_design -top $(TOP) -part xc7a100tcsg324-1 -flatten_hierarchy rebuilt" >> $@
 	echo "write_checkpoint -force post_synth.dcp" >> $@
 	echo "opt_design" >> $@
-	echo "place_design" >> $@
-	echo "phys_opt_design" >> $@
-	echo "route_design" >> $@
+	echo "place_design -directive ExtraTimingOpt" >> $@
+	echo "phys_opt_design -directive AggressiveExplore" >> $@
+	echo "route_design -directive AggressiveExplore" >> $@
 	echo "write_checkpoint -force post_route.dcp" >> $@
 	echo "report_timing_summary -file $(TOP)_timing.rpt" >> $@
 	echo "if {[get_property SLACK [get_timing_paths -setup]] < 0 || [get_property SLACK [get_timing_paths -hold]] < 0} {" >> $@

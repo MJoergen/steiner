@@ -77,111 +77,221 @@ architecture synthesis of steiner is
   constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
   constant C_R        : natural := binom(G_N-1, G_T-1) / binom(G_K-1, G_T-1);
 
-  signal cur_index    : natural range 0 to C_NUM_ROWS;
+  -- The following is an optimization that saves a lot of work by doing an "early
+  -- pruning" of the search tree:
+  -- * The first C_R rows must have the left-most column set. These are the rows
+  --   before C_SEG1.
+  -- * The next C_R-1 rows must have the second column set. These are the rows before
+  --   C_SEG2.
+  constant C_SEG1 : natural := binom(G_N-1, G_K-1);
+  constant C_SEG2 : natural := binom(G_N-1, G_K-1) + binom(G_N-2, G_K-1);
 
-  signal valid        : std_logic_vector(C_NUM_ROWS-1 downto 0);
+  -- One bit for each of the C_NUM_ROWS rows
+  subtype rows_t is std_logic_vector(C_NUM_ROWS-1 downto 0);
+  type rows_vec_t is array (natural range <>) of rows_t;
 
-  type pos_t is array (natural range <>) of natural range 0 to C_NUM_ROWS;
-  signal positions    : pos_t(0 to C_B-1) := (others => C_NUM_ROWS);
-  signal num_placed   : natural range 0 to C_B;
+  subtype index_t is natural range 0 to C_NUM_ROWS-1;
+  type index_vec_t is array (natural range <>) of index_t;
 
-  type valid_t is array (natural range <>) of std_logic_vector(C_NUM_ROWS-1 downto 0);
-  signal valid_vec    : valid_t(C_B-1 downto 0);
+  -- Convert a one-hot vector to the index of the bit that is set. This is just an OR
+  -- for each bit of the index, rather than a priority encoder.
+  pure function index_of(arg : rows_t) return index_t is
+    variable res : natural;
+    variable bit : natural;
+  begin
+    res := 0;
+    bit := 1;
+    while bit < C_NUM_ROWS loop
+      for i in 0 to C_NUM_ROWS-1 loop
+        if (i / bit) mod 2 = 1 and arg(i) = '1' then
+          res := res + bit;
+          exit;
+        end if;
+      end loop;
+      bit := bit * 2;
+    end loop;
+    return res;
+  end function index_of;
 
-  signal remove       : std_logic;
+  -- Isolate the lowest set bit. This maps onto a carry chain.
+  pure function lowest_of(arg : std_logic_vector) return std_logic_vector is
+  begin
+    return arg and std_logic_vector(unsigned(not arg) + 1);
+  end function lowest_of;
+
+  -- The rows are split into three segments by C_SEG1 and C_SEG2. To keep the carry
+  -- chains short, the first row is found in each segment separately.
+  constant C_FIRST : integer_vector(0 to 2) := (0, C_SEG1, C_SEG2);
+  constant C_LAST  : integer_vector(0 to 2) := (C_SEG1-1, C_SEG2-1, C_NUM_ROWS-1);
+
+  -- The rows that can still be tried for the current position. They all come after
+  -- the row placed before it, and fit with every row placed so far.
+  signal cand       : rows_t;
+
+  -- Whether "cand" has any rows in each segment
+  signal any        : std_logic_vector(0 to 2);
+
+  -- The first (i.e. lowest numbered) row of "cand" in each segment, as a one-hot
+  -- vector
+  signal seg_lowest : rows_t;
+
+  -- The rows that fit with each bit of "seg_lowest"
+  signal seg_compat : rows_vec_t(0 to 2);
+
+  -- The rows that fit with the first row in "cand"
+  signal compat     : rows_t;
+
+  -- Whether to place the first row in "cand"
+  signal place      : std_logic;
+
+  -- The number of rows placed so far, and some values derived from it. These are
+  -- kept in registers to keep them out of the critical path.
+  signal depth      : natural range 0 to C_B;
+  signal depth_m1   : natural range 0 to C_B-1; -- depth - 1
+  signal empty      : std_logic;                -- depth = 0
+  signal full       : std_logic;                -- depth = C_B
+  signal allow1     : std_logic;                -- depth >= C_R
+  signal allow2     : std_logic;                -- depth >= 2*C_R-1
+
+  -- Entry "d" is the row placed when "d" rows had already been placed, and the rows
+  -- that remain to be tried in its place afterwards. The stack is only ever read
+  -- at entry "depth-1", so it fits in distributed RAM.
+  signal stack      : rows_vec_t(0 to C_B-1);
+  signal positions  : index_vec_t(0 to C_B-1);
+
+  -- Writing to the stack is delayed by one clock cycle, to keep it out of the
+  -- critical path. These registers hold the values needed for the write, after a row
+  -- was placed in the previous clock cycle. They are loaded every clock cycle, so
+  -- they don't depend on the decision to place a row.
+  signal placed       : std_logic;
+  signal placed_depth : natural range 0 to C_B-1;
+  signal placed_cand  : rows_t;
+  signal placed_seg   : rows_t;    -- seg_lowest
+  signal placed_any   : std_logic_vector(0 to 1);
+
+  -- The row that was placed in the previous clock cycle, as a one-hot vector, and
+  -- the rows that remain to be tried in its place afterwards
+  signal placed_row   : rows_t;
+  signal placed_rest  : rows_t;
+
+  -- The candidates to continue with after removing the most recently placed row
+  signal top_cand     : rows_t;
 
 begin
 
-  valid_vec_gen : for i in 0 to C_B-1 generate
+  seg_gen : for s in 0 to 2 generate
+    any(s) <= or cand(C_LAST(s) downto C_FIRST(s));
+
+    seg_lowest(C_LAST(s) downto C_FIRST(s)) <= lowest_of(cand(C_LAST(s) downto C_FIRST(s)));
+
     valid_inst : entity work.valid
       generic map (
         G_N        => G_N,
         G_K        => G_K,
         G_T        => G_T,
-        G_NUM_ROWS => C_NUM_ROWS
+        G_NUM_ROWS => C_NUM_ROWS,
+        G_FIRST    => C_FIRST(s),
+        G_LAST     => C_LAST(s)
       )
       port map (
-        pos_i   => positions(i),
-        valid_o => valid_vec(i)
-      );
-  end generate valid_vec_gen;
+        sel_i   => seg_lowest(C_LAST(s) downto C_FIRST(s)),
+        valid_o => seg_compat(s)
+      ); -- valid_inst
+  end generate seg_gen;
 
-  process (all)
-    variable tmp : std_logic_vector(C_NUM_ROWS-1 downto 0);
-  begin
-    tmp := (others => '1');
-    for i in 0 to C_B-1 loop
-       tmp := tmp and valid_vec(i);
+  -- Only the first non-empty segment counts. This is done after the lookup in
+  -- "valid", to keep it out of the critical path.
+  compat <= seg_compat(0) and
+            (seg_compat(1) or any(0)) and
+            (seg_compat(2) or any(0) or any(1));
 
-       -- The following is an optimization that saves a lot of work by doing an "early
-       -- pruning" of the search tree.
-       if positions(i) < C_NUM_ROWS then
-         -- The first C_R rows must have the left-most column set
-         if i < C_R then
-           if positions(i) >= binom(G_N-1, G_K-1) then
-             tmp := (others => '0');
-           end if;
-         -- The next C_R-1 rows must have the second column set
-         elsif i < 2*C_R-1 then
-           if positions(i) >= binom(G_N-1, G_K-1) + binom(G_N-2, G_K-1) then
-             tmp := (others => '0');
-           end if;
-         end if;
-       end if;
-    end loop;
-    valid <= tmp;
-  end process;
+  -- The first row in "cand" may be placed, unless the early pruning forbids it
+  place <= any(0) or (allow1 and any(1)) or (allow2 and any(2));
 
+  -- As with "compat", only the first non-empty segment counts
+  placed_row(C_LAST(0) downto C_FIRST(0)) <= placed_seg(C_LAST(0) downto C_FIRST(0));
+  placed_row(C_LAST(1) downto C_FIRST(1)) <= placed_seg(C_LAST(1) downto C_FIRST(1))
+                                             when placed_any(0) = '0' else (others => '0');
+  placed_row(C_LAST(2) downto C_FIRST(2)) <= placed_seg(C_LAST(2) downto C_FIRST(2))
+                                             when placed_any = "00" else (others => '0');
+
+  placed_rest <= placed_cand and not placed_row;
+
+  -- If a row was placed in the previous clock cycle, its stack entry has not been
+  -- written yet
+  top_cand <= placed_rest when placed = '1' else stack(depth_m1);
+
+  -- Each clock cycle the search does one of these things:
+  -- * Sends a solution, if all rows are placed, and then removes the last row.
+  -- * Places the first remaining candidate row.
+  -- * Removes the last row, if there are no candidates left.
   main_proc : process (clk_i)
+    variable solution : index_vec_t(0 to C_B-1);
+
+    procedure set_depth (d : natural) is
+    begin
+      depth    <= d;
+      depth_m1 <= maximum(d, 1) - 1;
+      empty    <= '1' when d = 0 else '0';
+      full     <= '1' when d = C_B else '0';
+      allow1   <= '1' when d >= C_R else '0';
+      allow2   <= '1' when d >= 2*C_R-1 else '0';
+    end procedure set_depth;
+
+    -- Remove the most recently placed row, and continue with the rows after it
+    procedure pop is
+    begin
+      cand <= top_cand;
+      set_depth(depth - 1);
+    end procedure pop;
+
   begin
     if rising_edge(clk_i) then
       if m_ready_i = '1' then
         m_valid_o <= '0';
       end if;
 
-      if remove = '1' then
-        cur_index <= positions(num_placed) + 1;
-        positions(num_placed) <= C_NUM_ROWS;
-        remove <= '0';
-      elsif num_placed = C_B and m_valid_o = '1' and m_ready_i = '0' then
-        -- The previous solution has not been accepted yet, so wait
-        null;
-      else
-        if num_placed = C_B then
-          m_data_o  <= solution_t(positions);
-          m_valid_o <= '1';
-          -- We remove the previous piece
-          num_placed <= num_placed - 1;
-          remove     <= '1';
-        end if;
+      -- Complete the write to the stack, if a row was placed in the previous clock
+      -- cycle
+      placed       <= '0';
+      placed_depth <= minimum(depth, C_B-1);
+      placed_cand  <= cand;
+      placed_seg   <= seg_lowest;
+      placed_any   <= any(0 to 1);
+      if placed = '1' then
+        stack(placed_depth)     <= placed_rest;
+        positions(placed_depth) <= index_of(placed_row);
+      end if;
 
-        if cur_index < C_NUM_ROWS and valid(cur_index) = '1' then
-          -- We place the next piece
-          num_placed <= num_placed + 1;
-          positions(num_placed) <= cur_index;
-        else
-          if cur_index < C_NUM_ROWS-1 and unsigned(valid) /= 0 then
-            -- Go to next potential position
-            cur_index <= cur_index + 1;
-          else
-            if num_placed > 0 then
-              -- We remove the previous piece
-              num_placed <= num_placed - 1;
-              remove     <= '1';
-            elsif m_valid_o = '0' then
-              done_o <= '1';
-            end if;
+      if full = '1' then
+        -- Wait until the previous solution has been accepted
+        if m_valid_o = '0' or m_ready_i = '1' then
+          solution := positions;
+          if placed = '1' then
+            solution(placed_depth) := index_of(placed_row);
           end if;
+          m_data_o  <= solution_t(solution);
+          m_valid_o <= '1';
+          pop;
         end if;
+      elsif place = '1' then
+        -- Place the first candidate row
+        cand   <= cand and compat;
+        placed <= '1';
+        set_depth(depth + 1);
+      elsif empty = '0' then
+        -- No candidates left, so go back
+        pop;
+      elsif m_valid_o = '0' then
+        done_o <= '1';
       end if;
 
       if rst_i = '1' then
-        positions  <= (others => C_NUM_ROWS);
-        num_placed <= 0;
-        cur_index  <= 0;
-        done_o     <= '0';
-        remove     <= '0';
-        m_valid_o  <= '0';
+        cand      <= (others => '1');
+        set_depth(0);
+        placed    <= '0';
+        done_o    <= '0';
+        m_valid_o <= '0';
       end if;
     end if;
   end process main_proc;
