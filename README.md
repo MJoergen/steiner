@@ -1,5 +1,6 @@
 # steiner
 
+[![sim](https://github.com/MJoergen/steiner/actions/workflows/sim.yml/badge.svg)](https://github.com/MJoergen/steiner/actions/workflows/sim.yml)
 [![formal](https://github.com/MJoergen/steiner/actions/workflows/formal.yml/badge.svg)](https://github.com/MJoergen/steiner/actions/workflows/formal.yml)
 
 An FPGA design, written in VHDL, that finds every
@@ -185,6 +186,11 @@ make sim N=7 K=3 T=2
 ```
 
 For larger parameters you may also need to raise `G_TIMEOUT`.
+
+The [sim workflow](.github/workflows/sim.yml) runs the simulation on GitHub Actions
+for every push to `main` and every pull request, for each parameter set with a
+results file. It also checks that `steiner_tb.txt` matches the results file
+exactly.
 
 ### Formal verification
 

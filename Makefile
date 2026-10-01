@@ -24,6 +24,7 @@ help:
 
 sim:
 	ghdl -a --std=08 $(SRC) $(TB).vhd
+	ghdl -e --std=08 $(TB)
 	ghdl -r --std=08 $(TB) -gG_N=$(N) -gG_K=$(K) -gG_T=$(T) \
 		--assert-level=error --wave=$(TB).ghw
 
