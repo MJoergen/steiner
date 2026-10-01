@@ -1,0 +1,47 @@
+## Formal verification of the search in steiner.vhd.
+##
+## Task naming:  <mode>_<n><k><t>
+##
+##   cover_421 / bmc_421 / prove_421 - (n,k,t) = (4,2,1): 6 rows, 2 per solution,
+##                       3 solutions. The whole search takes about 15 clock
+##                       cycles, so the cover and bmc tasks run it to the end.
+##
+##   prove_732         - (n,k,t) = (7,3,2): the Fano plane, 35 rows, 7 per
+##                       solution. Exercises both early-pruning rules, which
+##                       (4,2,1) does not.
+##
+## memory_map -rom-only turns constant tables into logic. Without it a table
+## becomes a ROM, and k-induction treats the contents of a ROM as free state,
+## which gives false counterexamples.
+##
+## Run one task:   sby --yosys "yosys -m ghdl" -f steiner.sby prove_421
+## Run everything: sby --yosys "yosys -m ghdl" -f steiner.sby
+
+[tasks]
+cover_421  cover  p421
+bmc_421    bmc    p421
+prove_421  prove  p421
+prove_732  prove  p732
+
+[options]
+cover: mode cover
+cover: depth 45
+bmc: mode bmc
+bmc: depth 50
+prove: mode prove
+prove: depth 4
+
+[engines]
+smtbmc
+
+[script]
+p421: ghdl --std=08 -gG_N=4 -gG_K=2 -gG_T=1 steiner_pkg.vhd valid.vhd steiner.vhd steiner.psl -e steiner
+p732: ghdl --std=08 -gG_N=7 -gG_K=3 -gG_T=2 steiner_pkg.vhd valid.vhd steiner.vhd steiner.psl -e steiner
+prep -top steiner
+memory_map -rom-only
+
+[files]
+steiner.psl
+../steiner_pkg.vhd
+../valid.vhd
+../steiner.vhd

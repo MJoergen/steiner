@@ -270,7 +270,11 @@ begin
           if placed = '1' then
             solution(placed_depth) := index_of(placed_row);
           end if;
-          m_data_o  <= solution_t(solution);
+          -- Copied element by element, because GHDL synthesis (used for formal
+          -- verification) gets the array type conversion solution_t(solution) wrong.
+          for i in solution'range loop
+            m_data_o(i) <= solution(i);
+          end loop;
           m_valid_o <= '1';
           pop;
         end if;

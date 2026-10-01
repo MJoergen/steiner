@@ -1,5 +1,7 @@
 # steiner
 
+[![formal](https://github.com/MJoergen/steiner/actions/workflows/formal.yml/badge.svg)](https://github.com/MJoergen/steiner/actions/workflows/formal.yml)
+
 An FPGA design, written in VHDL, that finds every
 [Steiner system](https://en.wikipedia.org/wiki/Steiner_system) S(t, k, n) for given
 parameters by searching all possibilities in hardware.
@@ -121,6 +123,7 @@ fit with it → `cand`. These things keep that loop short:
 | `steiner_tb.gtkw`  | GTKWave layout for viewing the simulation waveform       |
 | `nexys4ddr.xdc`    | Pin and clock constraints for the Nexys 4 DDR board      |
 | `result_*.txt`     | All solutions found for the parameters in the file name  |
+| `formal/`          | Formal verification of `steiner.vhd` using SymbiYosys    |
 
 ## Usage
 
@@ -131,6 +134,7 @@ make help        Show this help text (default)
 make sim         Simulate the design using GHDL, writing steiner_tb.ghw
                  and checking each solution
 make show        Show the simulation waveform using GTKWave
+make formal      Run formal verification using SymbiYosys
 make vivado      Synthesize the design using Vivado, writing nexys4ddr.bit
 ```
 
@@ -181,6 +185,50 @@ make sim N=7 K=3 T=2
 ```
 
 For larger parameters you may also need to raise `G_TIMEOUT`.
+
+### Formal verification
+
+You need [SymbiYosys](https://github.com/YosysHQ/sby), Yosys with the
+[GHDL plugin](https://github.com/ghdl/ghdl-yosys-plugin), and an SMT solver. The
+[OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build) has all of them.
+
+```
+make formal
+```
+
+This runs `make -C formal`, which runs SymbiYosys on `formal/steiner.sby`. The
+properties are in `formal/steiner.psl`. They check that:
+
+* the output stream holds `m_valid_o` and `m_data_o` stable until the solution is
+  accepted,
+* `done_o` stays high once set, and is never high while a solution is waiting,
+* every solution on `m_data_o` is valid: the row indices are in range and strictly
+  increasing, and any two rows are compatible. This uses separate instances of
+  `valid.vhd`,
+* the search state is consistent: the registers derived from the number of placed
+  rows match it, and the placed rows are in range, strictly increasing, pairwise
+  compatible and follow the early pruning rules, and
+* no rows are lost: `cand` and every stack entry hold exactly the rows that fit
+  with the rows placed so far and come after the most recently tried row. This
+  also covers the delayed stack write and its bypass.
+
+The properties are proven for all reachable states by k-induction, with the
+parameters `(4, 2, 1)` and `(7, 3, 2)`. With `(4, 2, 1)` the whole search takes
+about 15 clock cycles, so the `bmc` and `cover` tasks also run it to the end. All
+tasks together take about 10 seconds. The formal verification doesn't check
+directly that every solution is sent out, but together the properties above show
+that the search never skips a row that could be placed.
+
+To run one task and look at a failing trace:
+
+```
+cd formal
+sby --yosys "yosys -m ghdl" -f steiner.sby prove_421
+gtkwave steiner_prove_421/engine_0/trace_induct.vcd
+```
+
+The [formal workflow](.github/workflows/formal.yml) runs the formal verification on
+GitHub Actions for every push to `main` and every pull request.
 
 ### Synthesis
 
