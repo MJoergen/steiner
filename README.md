@@ -25,6 +25,14 @@ exactly once, which makes it a Steiner system. Each column then contains exactly
 `r = B(n-1,t-1) / B(k-1,t-1)` ones. Here `B(n,k)` is the binomial coefficient
 "n choose k".
 
+A Steiner system can only exist if `b`, `r`, and in general `B(n-i,t-i) / B(k-i,t-i)`
+for every `i` from 0 to `t-1`, are whole numbers. Parameters that meet these
+conditions are called admissible. For example, `(n, 3, 2)` is admissible when `n` is
+1 or 3 modulo 6, and `(n, k, 1)` when `k` divides `n`. Only admissible parameters
+give meaningful results. For other parameters there are no Steiner systems, but the
+design still outputs some sets of rows that aren't Steiner systems, see
+[Admissible parameters](ALGORITHM.md#admissible-parameters).
+
 For example, with `(n, k, t) = (7, 3, 2)` there are `b = 7` rows and `r = 3`. One of
 the solutions is the [Fano plane](https://en.wikipedia.org/wiki/Fano_plane):
 

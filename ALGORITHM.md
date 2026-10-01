@@ -17,6 +17,38 @@ operations are just AND, OR and NOT. [`valid.vhd`](valid.vhd) computes, at
 elaboration time, which pairs of rows conflict. Given one row as a one-hot
 vector, it outputs the set of rows that don't conflict with it.
 
+## Admissible parameters
+
+In a Steiner system, every set of `t` columns is in exactly one row. Take any
+set of `i` columns, for some `i` from 0 to `t-1`. It is part of
+`B(n-i,t-i)` sets of `t` columns, and each row that contains it covers
+`B(k-i,t-i)` of these. So the number of rows that contain the `i` columns is
+exactly
+
+    l_i = B(n-i,t-i) / B(k-i,t-i)
+
+which must be a whole number. `l_0 = b` is the number of rows, `l_1 = r` is
+the number of rows with any one column, and `l_2` is the number of rows with any
+two columns, which the [early pruning](#early-pruning) uses. Parameters where
+every `l_i` is a whole number are called admissible. For example:
+
+* `(n, k, 1)` is admissible when `k` divides `n`.
+* `(n, 3, 2)` is admissible when `n` is 1 or 3 modulo 6.
+* `(n, 4, 3)` is admissible when `n` is 2 or 4 modulo 6.
+
+This is necessary, but not enough, for a Steiner system to exist. For example,
+`(43, 7, 2)` is admissible, with `b = 43` and `r = 7`, but there is no such
+Steiner system, since there is no projective plane of order 6.
+
+The design computes `b`, `r` and `l_2` with integer division, so for parameters
+that aren't admissible, they are rounded down. Then a set of `b` rows with no
+conflicts covers fewer than all the sets of `t` columns, so it isn't a Steiner
+system. The design still outputs some of these sets, but not all of them, since
+the early pruning relies on each column being in exactly `r` rows. For example,
+for `(9, 2, 1)`, `b` is 4 (rounded down from 4.5), and the design outputs 840 of
+the 945 sets of 4 disjoint pairs of columns. The testbench only checks that no
+two rows in a solution conflict, so it accepts these.
+
 ## The search
 
 The search is depth-first with backtracking. Each solution is built by placing
@@ -85,17 +117,17 @@ right away.
 
 ## Early pruning
 
-Each column is in exactly `r` rows of a solution. All the rows with column 0
-come before all the other rows, so in a solution the first `r` rows have column
-0. Those are the rows before `C_SEG1 = B(n-1,k-1)`.
+For admissible parameters, each column is in exactly `r` rows of a solution.
+All the rows with column 0 come before all the other rows, so in a solution the
+first `r` rows have column 0. Those are the rows before `C_SEG1 = B(n-1,k-1)`.
 
-Columns 0 and 1 are together in exactly `l2 = B(n-2,t-2) / B(k-2,t-2)` rows of
-a solution (`C_L2` in the code), so column 1 is in `r - l2` rows without column
-0. These rows come right after the rows with column 0, so the next `r - l2`
-rows of a solution have column 1. They are the rows before
-`C_SEG2 = B(n-1,k-1) + B(n-2,k-1)`. For `t = 2`, `l2` is 1, and for
-`(8, 4, 3)` it is 3. For `t = 1`, `l2` isn't defined, and only the first rule is
-used.
+Columns 0 and 1 are together in exactly `l_2 = B(n-2,t-2) / B(k-2,t-2)` rows of
+a solution (`C_L2` in the code), so column 1 is in `r - l_2` rows without
+column 0. These rows come right after the rows with column 0, so the next
+`r - l_2` rows of a solution have column 1. They are the rows before
+`C_SEG2 = B(n-1,k-1) + B(n-2,k-1)`. For `t = 2`, `l_2` is 1, and for
+`(8, 4, 3)` it is 3. For `t = 1`, `l_2` isn't defined, and only the first rule
+is used.
 
 Both rules only forbid rows from the end of the order, at a given depth. So it
 is enough to check the first row in `cand`: if it is forbidden, so is every
