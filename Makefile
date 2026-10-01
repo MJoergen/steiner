@@ -5,18 +5,37 @@ TOP = nexys4ddr
 
 TB = steiner_tb
 
+# Search parameters for simulation
+N = 9
+K = 3
+T = 2
+RESULT = result_$(N)_$(K)_$(T).txt
+
+SHELL = /bin/bash
+
 .PHONY: help sim show vivado
 
 help:
 	@echo "Supported targets:"
 	@echo "  make help        Show this help text (default)"
 	@echo "  make sim         Simulate the design using GHDL, writing $(TB).ghw"
+	@echo "                   and checking the solutions against $(RESULT)"
 	@echo "  make show        Show the simulation waveform using GTKWave"
 	@echo "  make vivado      Synthesize the design using Vivado, writing $(TOP).bit"
 
 sim:
 	ghdl -a --std=08 $(SRC) $(TB).vhd
-	ghdl -r --std=08 $(TB) --stop-time=1100ms --wave=$(TB).ghw
+	set -o pipefail; ghdl -r --std=08 $(TB) -gG_N=$(N) -gG_K=$(K) -gG_T=$(T) \
+		--assert-level=error --wave=$(TB).ghw | tee $(TB).log
+	@grep '^steiner\.vhd:.*(report note): ' $(TB).log | sed 's/.*note): //; s/,/, /g; s/^/[/; s/$$/]/' > $(TB).txt
+	@if [ ! -f $(RESULT) ]; then \
+		echo "WARNING: $(RESULT) not found. Found $$(wc -l < $(TB).txt) solutions, not checked."; \
+	elif diff -q $(TB).txt $(RESULT) > /dev/null; then \
+		echo "PASS: All $$(wc -l < $(RESULT)) solutions match $(RESULT)"; \
+	else \
+		echo "ERROR: Solutions in $(TB).txt differ from $(RESULT)"; \
+		exit 1; \
+	fi
 
 show:
 	gtkwave $(TB).ghw $(TB).gtkw

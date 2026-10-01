@@ -104,6 +104,7 @@ Running `make` on its own shows the available targets:
 ```
 make help        Show this help text (default)
 make sim         Simulate the design using GHDL, writing steiner_tb.ghw
+                 and checking the solutions against result_9_3_2.txt
 make show        Show the simulation waveform using GTKWave
 make vivado      Synthesize the design using Vivado, writing nexys4ddr.bit
 ```
@@ -125,15 +126,26 @@ steiner.vhd:202:9:@4175ns:(report note): 0,13,22,27,35,41,47,53,55,59,71,76
 
 The clock stops when `done_o` goes high, which ends the simulation. With the
 default parameters `(9, 3, 2)` this happens after about 9.9 ms of simulated time,
-or roughly one million clock cycles. To get the solutions in the same format as the
-results files:
+or roughly one million clock cycles.
+
+The solutions are also written to `steiner_tb.txt` in the same format as the
+results files, and compared with `result_N_K_T.txt`. `make sim` fails if:
+
+* the simulation reports an error,
+* the search hasn't finished after `G_TIMEOUT` (1100 ms of simulated time, set in
+  `steiner_tb.vhd`), or
+* the solutions differ from the results file.
+
+If there is no results file for the parameters, the solutions are not checked and
+`make sim` prints a warning.
+
+To search for other parameters, set `N`, `K` and `T` on the command line:
 
 ```
-make sim | grep 'report note' | sed 's/.*note): //'
+make sim N=7 K=3 T=2
 ```
 
-To search for other parameters, change the `generic map` in `steiner_tb.vhd`. For
-larger parameters you may also need to raise `--stop-time` in the `Makefile`.
+For larger parameters you may also need to raise `G_TIMEOUT`.
 
 ### Synthesis
 

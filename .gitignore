@@ -3,6 +3,7 @@
 *.o
 *.ghw
 steiner_tb
+steiner_tb.txt
 
 # Vivado synthesis
 .Xil/

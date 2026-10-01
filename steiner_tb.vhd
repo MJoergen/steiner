@@ -3,6 +3,12 @@ library ieee;
   use ieee.numeric_std.all;
 
 entity steiner_tb is
+  generic (
+    G_N       : natural := 9;
+    G_K       : natural := 3;
+    G_T       : natural := 2;
+    G_TIMEOUT : time    := 1100 ms
+  );
 end entity steiner_tb;
 
 architecture simulation of steiner_tb is
@@ -20,9 +26,9 @@ begin
 
   steiner_inst : entity work.steiner
     generic map (
-      G_N => 9,
-      G_K => 3,
-      G_T => 2
+      G_N => G_N,
+      G_K => G_K,
+      G_T => G_T
     )
     port map (
       clk_i   => clk,
@@ -42,6 +48,16 @@ begin
       end if;
     end if;
   end process count_proc;
+
+  -- Fail the simulation if the search does not finish in time
+  timeout_proc : process
+  begin
+    wait until done = '1' for G_TIMEOUT;
+    assert done = '1'
+      report "Search did not finish within " & time'image(G_TIMEOUT)
+      severity failure;
+    wait;
+  end process timeout_proc;
 
 end architecture simulation;
 
