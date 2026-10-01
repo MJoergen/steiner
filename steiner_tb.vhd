@@ -79,6 +79,8 @@ architecture simulation of steiner_tb is
       return 30;
     elsif G_N = 9 and G_K = 3 and G_T = 2 then
       return 840;
+    elsif G_N = 8 and G_K = 4 and G_T = 3 then
+      return 30;
     else
       return -1;
     end if;

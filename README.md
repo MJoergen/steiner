@@ -56,6 +56,7 @@ numbered in lexicographic order of the column positions of their ones, so index 
 |-----------|----|---|-----------|------------------------------------------|
 | (7, 3, 2) | 7  | 3 | 30        | [result_7_3_2.txt](result_7_3_2.txt)     |
 | (9, 3, 2) | 12 | 4 | 840       | [result_9_3_2.txt](result_9_3_2.txt)     |
+| (8, 4, 3) | 14 | 7 | 30        | [result_8_4_3.txt](result_8_4_3.txt)     |
 
 Each line in these files is one solution, written as the list of chosen row indices.
 
@@ -85,9 +86,13 @@ in increasing index order and stops when `b` rows have been placed.
 
 The search also prunes branches early. Each column appears in exactly `r` rows, and
 rows are placed in increasing order. So the first `r` placed rows must all have
-column 0 set. Column 1 has already shared one row with column 0, so the next `r-1`
-rows must all have column 1 set. Any branch that breaks this rule is dropped at
-once.
+column 0 set. Column 1 shares
+
+    l2 = B(n-2,t-2) / B(k-2,t-2)
+
+of these rows with column 0, so the next `r-l2` rows must all have column 1 set.
+For `t = 2` this is `r-1` rows. For `t = 1`, `l2` isn't defined and only the first
+rule is used. Any branch that breaks these rules is dropped at once.
 
 ## Files
 

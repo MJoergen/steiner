@@ -77,6 +77,19 @@ architecture synthesis of steiner is
   constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
   constant C_R        : natural := binom(G_N-1, G_T-1) / binom(G_K-1, G_T-1);
 
+  -- Number of rows that contain both column 0 and column 1. This is only defined
+  -- for T >= 2. For T = 1 it returns C_R, which disables the second pruning rule.
+  pure function calc_l2 return natural is
+  begin
+    if G_T >= 2 then
+      return binom(G_N-2, G_T-2) / binom(G_K-2, G_T-2);
+    else
+      return C_R;
+    end if;
+  end function calc_l2;
+
+  constant C_L2       : natural := calc_l2;
+
   signal cur_index    : natural range 0 to C_NUM_ROWS;
 
   signal valid        : std_logic_vector(C_NUM_ROWS-1 downto 0);
@@ -121,8 +134,8 @@ begin
            if positions(i) >= binom(G_N-1, G_K-1) then
              tmp := (others => '0');
            end if;
-         -- The next C_R-1 rows must have the second column set
-         elsif i < 2*C_R-1 then
+         -- The next C_R-C_L2 rows must have the second column set
+         elsif i < 2*C_R-C_L2 then
            if positions(i) >= binom(G_N-1, G_K-1) + binom(G_N-2, G_K-1) then
              tmp := (others => '0');
            end if;
