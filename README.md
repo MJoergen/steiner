@@ -48,6 +48,7 @@ The known results are:
 |-----------|----|---|-----------|--------------------------------------|
 | (7, 3, 2) | 7  | 3 | 30        | [result_7_3_2.txt](result_7_3_2.txt) |
 | (9, 3, 2) | 12 | 4 | 840       | [result_9_3_2.txt](result_9_3_2.txt) |
+| (8, 4, 3) | 14 | 7 | 30        | [result_8_4_3.txt](result_8_4_3.txt) |
 
 Each line in these files is one solution, as the list of its row indices.
 
@@ -58,7 +59,8 @@ order. It keeps the rows that can still be tried as a bit vector, with one bit f
 each row. Each clock cycle it either places the first of these rows, removing the
 rows that conflict with it, or it backtracks. So each clock cycle visits one node
 of the search tree: 124,586 clock cycles for `(9, 3, 2)`. The search also prunes
-early, using the fact that the first `r` rows of a solution must have column 0.
+early, using the fact that the first `r` rows of a solution must have column 0,
+and the next rows must have column 1.
 
 [ALGORITHM.md](ALGORITHM.md) explains the algorithm in detail: the search and why it
 works, the early pruning, how the design is built to run at 180 MHz, and what limits
@@ -80,9 +82,7 @@ the clock frequency.
 
 ## Interface
 
-The generics `G_N`, `G_K` and `G_T` are the parameters `n`, `k` and `t`. The early
-pruning assumes `t <= 2`. For larger `t` the search misses solutions, see
-[Early pruning](ALGORITHM.md#early-pruning).
+The generics `G_N`, `G_K` and `G_T` are the parameters `n`, `k` and `t`.
 
 | Port                    | Direction | Description                                                        |
 |-------------------------|-----------|--------------------------------------------------------------------|
@@ -109,7 +109,7 @@ Type `make` to list the supported targets:
   [SymbiYosys](https://github.com/YosysHQ/sby), Yosys with the
   [GHDL plugin](https://github.com/ghdl/ghdl-yosys-plugin), and an SMT solver. The
   [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build) has all of them.
-  It takes about 10 seconds.
+  It takes about 1 minute.
 * `make vivado` builds the bitstream for the board, see [Synthesis](#synthesis). It
   expects Vivado 2025.1 in `/opt/Xilinx/2025.1/Vivado` (the variable `XILINX_DIR`),
   and takes about 2 minutes.
@@ -138,7 +138,8 @@ new result, add it to `expected_count` in `steiner_tb.vhd`.
 ## Formal verification
 
 The properties in [`formal/steiner.psl`](formal/steiner.psl) are proven for all
-reachable states by k-induction, with the parameters `(4, 2, 1)` and `(7, 3, 2)`:
+reachable states by k-induction, with the parameters `(4, 2, 1)`, `(7, 3, 2)` and
+`(8, 4, 3)`:
 
 * The output holds `m_valid_o` and `m_data_o` until the solution is accepted.
 * `done_o` stays high once set, and is never high while a solution is waiting.

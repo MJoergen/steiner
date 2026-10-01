@@ -10,6 +10,11 @@
 ##                       solution. Exercises both early-pruning rules, which
 ##                       (4,2,1) does not.
 ##
+##   prove_843         - (n,k,t) = (8,4,3): 70 rows, 14 per solution. Columns 0
+##                       and 1 are together in 3 rows rather than 1, which the
+##                       second early-pruning rule must take into account. This
+##                       task takes about 50 seconds, the others a few seconds.
+##
 ## memory_map -rom-only turns constant tables into logic. Without it a table
 ## becomes a ROM, and k-induction treats the contents of a ROM as free state,
 ## which gives false counterexamples.
@@ -22,6 +27,7 @@ cover_421  cover  p421
 bmc_421    bmc    p421
 prove_421  prove  p421
 prove_732  prove  p732
+prove_843  prove  p843
 
 [options]
 cover: mode cover
@@ -37,6 +43,7 @@ smtbmc
 [script]
 p421: ghdl --std=08 -gG_N=4 -gG_K=2 -gG_T=1 steiner_pkg.vhd valid.vhd steiner.vhd steiner.psl -e steiner
 p732: ghdl --std=08 -gG_N=7 -gG_K=3 -gG_T=2 steiner_pkg.vhd valid.vhd steiner.vhd steiner.psl -e steiner
+p843: ghdl --std=08 -gG_N=8 -gG_K=4 -gG_T=3 steiner_pkg.vhd valid.vhd steiner.vhd steiner.psl -e steiner
 prep -top steiner
 memory_map -rom-only
 

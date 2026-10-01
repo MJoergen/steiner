@@ -168,7 +168,7 @@ vunit i_steiner(steiner(synthesis))
          (empty  = '1') /= (depth = 0) or
          (full   = '1') /= (depth = C_B) or
          (allow1 = '1') /= (depth >= C_R) or
-         (allow2 = '1') /= (depth >= 2*C_R-1) then
+         (allow2 = '1') /= (depth >= 2*C_R-C_L2) then
          f_depth_flags <= '0';
       end if;
 
@@ -197,7 +197,7 @@ vunit i_steiner(steiner(synthesis))
             end if;
             -- The early pruning rules are followed
             if (i < C_R and f_pos(i) >= C_SEG1) or
-               (i < 2*C_R-1 and f_pos(i) >= C_SEG2) then
+               (i < 2*C_R-C_L2 and f_pos(i) >= C_SEG2) then
                f_pos_pruned <= '0';
             end if;
             -- The rows left to try in place of row "i" are exactly the rows after

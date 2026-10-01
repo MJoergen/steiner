@@ -78,6 +78,7 @@ same clock cycle. It also spent one clock cycle on every row that didn't fit.
 | ----------- | --------------- | ----------- | ----- |
 | (7, 3, 2)   | 6,012           | 510         | 11.8  |
 | (9, 3, 2)   | 1,026,721       | 124,586     | 8.2   |
+| (8, 4, 3)   | 474,896         | 12,510      | 38.0  |
 
 These are clock cycles for the whole search, when every solution is accepted
 right away.
@@ -88,19 +89,17 @@ Each column is in exactly `r` rows of a solution. All the rows with column 0
 come before all the other rows, so in a solution the first `r` rows have column
 0. Those are the rows before `C_SEG1 = B(n-1,k-1)`.
 
-For `t = 2`, columns 0 and 1 are together in exactly one row, so column 1 is in
-`r - 1` rows without column 0. These rows come right after the rows with column
-0, so the next `r - 1` rows of a solution have column 1. They are the rows
-before `C_SEG2 = B(n-1,k-1) + B(n-2,k-1)`.
+Columns 0 and 1 are together in exactly `l2 = B(n-2,t-2) / B(k-2,t-2)` rows of
+a solution (`C_L2` in the code), so column 1 is in `r - l2` rows without column
+0. These rows come right after the rows with column 0, so the next `r - l2`
+rows of a solution have column 1. They are the rows before
+`C_SEG2 = B(n-1,k-1) + B(n-2,k-1)`. For `t = 2`, `l2` is 1, and for
+`(8, 4, 3)` it is 3. For `t = 1`, `l2` isn't defined, and only the first rule is
+used.
 
 Both rules only forbid rows from the end of the order, at a given depth. So it
 is enough to check the first row in `cand`: if it is forbidden, so is every
 other row in `cand`, and the search backtracks at once.
-
-The second rule as written only holds for `t <= 2`. In general, columns 0 and
-1 are together in `B(n-2,t-2) / B(k-2,t-2)` rows, which is 1 only for `t = 2`.
-For `t = 3` the rule is too strict, and the search misses solutions, e.g. it
-finds none for `(8, 4, 3)`.
 
 ## Implementation
 

@@ -77,12 +77,25 @@ architecture synthesis of steiner is
   constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
   constant C_R        : natural := binom(G_N-1, G_T-1) / binom(G_K-1, G_T-1);
 
+  -- Number of rows that contain both column 0 and column 1. This is only defined
+  -- for T >= 2. For T = 1 it returns C_R, which disables the second pruning rule.
+  pure function calc_l2 return natural is
+  begin
+    if G_T >= 2 then
+      return binom(G_N-2, G_T-2) / binom(G_K-2, G_T-2);
+    else
+      return C_R;
+    end if;
+  end function calc_l2;
+
+  constant C_L2       : natural := calc_l2;
+
   -- The following is an optimization that saves a lot of work by doing an "early
   -- pruning" of the search tree:
   -- * The first C_R rows must have the left-most column set. These are the rows
   --   before C_SEG1.
-  -- * The next C_R-1 rows must have the second column set. These are the rows before
-  --   C_SEG2.
+  -- * The next C_R-C_L2 rows must have the second column set. These are the rows
+  --   before C_SEG2.
   constant C_SEG1 : natural := binom(G_N-1, G_K-1);
   constant C_SEG2 : natural := binom(G_N-1, G_K-1) + binom(G_N-2, G_K-1);
 
@@ -151,7 +164,7 @@ architecture synthesis of steiner is
   signal empty      : std_logic;                -- depth = 0
   signal full       : std_logic;                -- depth = C_B
   signal allow1     : std_logic;                -- depth >= C_R
-  signal allow2     : std_logic;                -- depth >= 2*C_R-1
+  signal allow2     : std_logic;                -- depth >= 2*C_R-C_L2
 
   -- Entry "d" is the row placed when "d" rows had already been placed, and the rows
   -- that remain to be tried in its place afterwards. The stack is only ever read
@@ -235,7 +248,7 @@ begin
       empty    <= '1' when d = 0 else '0';
       full     <= '1' when d = C_B else '0';
       allow1   <= '1' when d >= C_R else '0';
-      allow2   <= '1' when d >= 2*C_R-1 else '0';
+      allow2   <= '1' when d >= 2*C_R-C_L2 else '0';
     end procedure set_depth;
 
     -- Remove the most recently placed row, and continue with the rows after it

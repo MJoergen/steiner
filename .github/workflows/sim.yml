@@ -19,6 +19,7 @@ jobs:
         include:
           - { n: 7, k: 3, t: 2 }
           - { n: 9, k: 3, t: 2 }
+          - { n: 8, k: 4, t: 3 }
 
     steps:
       - name: Check out the design
