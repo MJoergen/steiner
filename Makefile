@@ -11,7 +11,7 @@ N = 9
 K = 3
 T = 2
 
-.PHONY: help sim show vivado
+.PHONY: help sim show formal vivado
 
 help:
 	@echo "Supported targets:"
@@ -19,6 +19,7 @@ help:
 	@echo "  make sim         Simulate the design using GHDL, writing $(TB).ghw"
 	@echo "                   and checking each solution"
 	@echo "  make show        Show the simulation waveform using GTKWave"
+	@echo "  make formal      Run formal verification using SymbiYosys"
 	@echo "  make vivado      Synthesize the design using Vivado, writing $(TOP).bit"
 
 sim:
@@ -28,6 +29,9 @@ sim:
 
 show:
 	gtkwave $(TB).ghw $(TB).gtkw
+
+formal:
+	$(MAKE) -C formal
 
 
 ################################################
