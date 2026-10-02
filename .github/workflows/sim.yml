@@ -36,6 +36,7 @@ jobs:
 
       # Simulates each parameter set in CHECK in the Makefile. The testbench
       # checks that each solution is a Steiner system, and the solutions must
-      # be exactly those of steiner_ref.py and of the results files.
+      # be exactly those of steiner_ref.py and of the results files. The text
+      # from steiner2uart.vhd must be exactly that of steiner_ref.py --text.
       - name: Run the simulations
         run: make check

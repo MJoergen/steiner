@@ -4,6 +4,8 @@
 *.ghw
 steiner_tb
 steiner_tb.txt
+steiner2uart_tb
+steiner2uart_tb.txt
 uart_tb
 check_*
 

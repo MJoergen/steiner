@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Reference model: print every Steiner system S(t, k, n).
 
-Usage: steiner_ref.py N K T
+Usage: steiner_ref.py [--text] N K T
 
 Each solution is printed as the sorted list of its row indices, one solution
 per line, in lexicographic order. This is the same format as the results
 files and the testbench output, so the outputs can be compared with diff.
+
+With --text, each solution is printed as the text that steiner2uart.vhd sends
+instead: one line for each row, with its index and its columns, and an empty
+line after each solution. Lines end with CR LF.
 
 This works completely differently from the search in steiner.vhd, so that
 they can check each other. It finds the Steiner systems as an exact cover:
@@ -53,12 +57,28 @@ def steiner_systems(n, k, t):
     return sorted(solutions)
 
 
+def print_text(n, k, solution):
+    rows = list(itertools.combinations(range(n), k))
+    width = len(str(len(rows) - 1))
+    for i in solution:
+        columns = ''.join('*' if c in rows[i] else '.' for c in range(n))
+        print(f'{i:>{width}} {columns}', end='\r\n')
+    print(end='\r\n')
+
+
 def main():
-    if len(sys.argv) != 4:
+    args = sys.argv[1:]
+    text = args[:1] == ['--text']
+    if text:
+        args = args[1:]
+    if len(args) != 3:
         sys.exit(__doc__)
-    n, k, t = map(int, sys.argv[1:])
+    n, k, t = map(int, args)
     for solution in steiner_systems(n, k, t):
-        print('[' + ', '.join(map(str, solution)) + ']')
+        if text:
+            print_text(n, k, solution)
+        else:
+            print('[' + ', '.join(map(str, solution)) + ']')
 
 
 if __name__ == '__main__':

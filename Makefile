@@ -2,17 +2,20 @@ XILINX_DIR = /opt/Xilinx/2025.1/Vivado
 SRC  = steiner_pkg.vhd
 SRC += valid.vhd
 SRC += steiner.vhd
+SRC += steiner2uart.vhd
 SRC += uart.vhd
 TOP = nexys4ddr
 
 TB = steiner_tb
+TEXT_TB = steiner2uart_tb
 
 # Search parameters for simulation
 N = 9
 K = 3
 T = 2
 
-# Admissible parameter sets that "make check" compares with steiner_ref.py
+# Admissible parameter sets that "make check" compares with steiner_ref.py, both the
+# solutions and the text from steiner2uart.vhd
 CHECK = 4_2_1 6_2_1 6_3_1 7_3_2 8_2_1 8_4_1 8_4_3 9_3_1 9_3_2 10_2_1 10_5_1
 
 # Clock divisors that "make uart" simulates uart.vhd with
@@ -26,7 +29,8 @@ help:
 	@echo "  make sim         Simulate the design using GHDL, writing $(TB).ghw"
 	@echo "                   and checking each solution"
 	@echo "  make check       Simulate the design for each parameter set in CHECK, and"
-	@echo "                   compare the solutions with steiner_ref.py"
+	@echo "                   compare the solutions and the text from steiner2uart.vhd"
+	@echo "                   with steiner_ref.py"
 	@echo "  make uart        Simulate uart.vhd using GHDL for each clock divisor in"
 	@echo "                   UART_DIVISORS"
 	@echo "  make show        Show the simulation waveform using GTKWave"
@@ -41,10 +45,12 @@ sim:
 		--assert-level=error --wave=$(TB).ghw
 
 # The solutions must be exactly those of the reference model, in the same order,
-# and those in the results file, if there is one
+# and those in the results file, if there is one. The text from steiner2uart.vhd
+# must be exactly that of the reference model.
 check:
-	ghdl -a --std=08 $(SRC) $(TB).vhd
+	ghdl -a --std=08 $(SRC) $(TB).vhd $(TEXT_TB).vhd
 	ghdl -e --std=08 $(TB)
+	ghdl -e --std=08 $(TEXT_TB)
 	@for p in $(CHECK); do \
 	  set -- $$(echo $$p | tr _ ' '); \
 	  echo "Checking (n, k, t) = ($$1, $$2, $$3)"; \
@@ -57,8 +63,13 @@ check:
 	    diff check_$$p.txt result_$$p.txt > /dev/null || \
 	      { echo "The solutions differ from result_$$p.txt"; exit 1; }; \
 	  fi; \
+	  ghdl -r --std=08 $(TEXT_TB) -gG_N=$$1 -gG_K=$$2 -gG_T=$$3 -gG_OUTPUT=check_text_$$p.txt \
+	    --assert-level=error > check_text_$$p.log 2>&1 || { tail -5 check_text_$$p.log; exit 1; }; \
+	  python3 steiner_ref.py --text $$1 $$2 $$3 > check_text_$$p.ref; \
+	  diff check_text_$$p.txt check_text_$$p.ref > /dev/null || \
+	    { echo "The text from steiner2uart.vhd differs from steiner_ref.py"; exit 1; }; \
 	done
-	@echo "All solutions match steiner_ref.py"
+	@echo "All solutions and texts match steiner_ref.py"
 
 uart:
 	ghdl -a --std=08 uart.vhd uart_tb.vhd
@@ -108,7 +119,7 @@ $(TOP).tcl: Makefile
 ################################################
 
 clean:
-	rm -f *.cf *.o *.ghw $(TB) $(TB).txt check_* uart_tb
+	rm -f *.cf *.o *.ghw $(TB) $(TB).txt $(TEXT_TB) $(TEXT_TB).txt check_* uart_tb
 	rm -rf .Xil
 	rm -f $(TOP).tcl $(TOP).bit *.dcp *.rpt *.jou *.log
 	rm -f clockInfo.txt tight_setup_hold_pins.txt usage_statistics_webtalk.*

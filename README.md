@@ -80,6 +80,10 @@ the clock frequency.
 | [`steiner.vhd`](steiner.vhd)               | The search.                                              |
 | [`valid.vhd`](valid.vhd)                   | The rows that don't conflict with a given row.           |
 | [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Binomial coefficient function.                           |
+| [`steiner2uart.vhd`](steiner2uart.vhd)     | Converts each solution to text, see [Synthesis](#synthesis). |
+| [`uart.vhd`](uart.vhd)                     | UART that sends the text.                                |
+| [`steiner2uart_tb.vhd`](steiner2uart_tb.vhd) | Testbench for `steiner2uart.vhd`, see [Simulation](#simulation). |
+| [`uart_tb.vhd`](uart_tb.vhd)               | Testbench for `uart.vhd`, run by `make uart`.            |
 | [`steiner_tb.vhd`](steiner_tb.vhd)         | Testbench, see [Simulation](#simulation).                |
 | [`steiner_tb.gtkw`](steiner_tb.gtkw)       | GTKWave setup for viewing the waveform from `make sim`.  |
 | [`steiner_ref.py`](steiner_ref.py)         | Reference model in Python, see [Simulation](#simulation). |
@@ -123,8 +127,11 @@ Type `make` to list the supported targets:
   [GHDL](https://github.com/ghdl/ghdl). It takes about 10 seconds.
   `make sim N=7 K=3 T=2` selects other parameters.
 * `make check` runs the testbench for each parameter set in `CHECK` in the
-  `Makefile`, and compares the solutions with the reference model, see
-  [Simulation](#simulation). This also requires Python 3. It takes about 10 seconds.
+  `Makefile`, and compares the solutions, and the text from `steiner2uart.vhd`, with
+  the reference model, see
+  [Simulation](#simulation). This also requires Python 3. It takes about 20 seconds.
+* `make uart` runs the testbench of the UART, for each clock divisor in
+  `UART_DIVISORS` in the `Makefile`. This requires GHDL.
 * `make show` shows the waveform from `make sim` in
   [GTKWave](https://gtkwave.sourceforge.net/).
 * `make formal` runs the formal verification, see
@@ -171,6 +178,12 @@ from the design: It finds the Steiner systems as an exact cover, where every set
 holds every admissible parameter set with `n <= 10`, except `(10, 4, 3)`, which takes
 over an hour to simulate. (It has 2520 solutions, and they match too.)
 
+For each parameter set, `make check` also runs
+[`steiner2uart_tb.vhd`](steiner2uart_tb.vhd), which converts every solution to text
+with `steiner2uart.vhd`, and compares the text with that of
+`steiner_ref.py --text`. It accepts the characters at random, so the search has to
+wait, and fails if a character changes while it is waiting to be accepted.
+
 ## Formal verification
 
 The properties in [`formal/steiner.psl`](formal/steiner.psl) are proven for all
@@ -203,9 +216,14 @@ the design doesn't meet timing. The timing report is in `nexys4ddr_timing.rpt`.
 The top level `nexys4ddr.vhd` makes a 180 MHz clock from the 100 MHz board clock
 with an MMCM, and turns the `CPU_RESETN` button into a synchronous reset. The
 search starts when the MMCM has locked, and again whenever you press the button.
-LED0 shows `m_valid_o` and LED1 shows `done_o`. `m_ready_i` is tied high and
-`m_data_o` is left unconnected, so the solutions themselves are only seen in
-simulation. The parameters are set in the `generic map` in `nexys4ddr.vhd`.
+LED0 shows `m_valid_o` and LED1 shows `done_o`. The parameters are set by the
+constants `C_N`, `C_K` and `C_T` in `nexys4ddr.vhd`.
+
+Each solution is sent as text over the board's USB-UART, at 115200 baud with 8N1,
+in the same layout as the example above: one line for each row, with its index, and
+an empty line after each solution. Lines end with CR LF. The search waits while a
+solution is being sent, so on the board it takes about 12 seconds to send all 840
+solutions for `(9, 3, 2)`, rather than 0.69 ms.
 
 ## License
 
