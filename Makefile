@@ -14,7 +14,7 @@ T = 2
 # Admissible parameter sets that "make check" compares with steiner_ref.py
 CHECK = 4_2_1 6_2_1 6_3_1 7_3_2 8_2_1 8_4_1 8_4_3 9_3_1 9_3_2 10_2_1 10_5_1
 
-.PHONY: help sim check show formal vivado
+.PHONY: help sim check show formal vivado clean
 
 help:
 	@echo "Supported targets:"
@@ -26,6 +26,7 @@ help:
 	@echo "  make show        Show the simulation waveform using GTKWave"
 	@echo "  make formal      Run formal verification using SymbiYosys"
 	@echo "  make vivado      Synthesize the design using Vivado, writing $(TOP).bit"
+	@echo "  make clean       Remove the generated files"
 
 sim:
 	ghdl -a --std=08 $(SRC) $(TB).vhd
@@ -88,3 +89,14 @@ $(TOP).tcl: Makefile
 	echo "write_bitstream -force $(TOP).bit" >> $@
 	echo "exit" >> $@
 
+
+################################################
+## Generated files
+################################################
+
+clean:
+	rm -f *.cf *.o *.ghw $(TB) $(TB).txt check_*
+	rm -rf .Xil
+	rm -f $(TOP).tcl $(TOP).bit *.dcp *.rpt *.jou *.log
+	rm -f clockInfo.txt tight_setup_hold_pins.txt usage_statistics_webtalk.*
+	$(MAKE) -C formal clean

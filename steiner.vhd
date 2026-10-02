@@ -1,36 +1,18 @@
--- This performs exhaustive brute-force search for Steiner Systems.
--- https://en.wikipedia.org/wiki/Steiner_system
+-- This finds every Steiner system S(t, k, n) by a depth-first search with
+-- backtracking: https://en.wikipedia.org/wiki/Steiner_system
 --
--- This is inspired by this video: https://www.youtube.com/watch?v=4xnRZqD7rAo
+-- It is inspired by this video: https://www.youtube.com/watch?v=4xnRZqD7rAo
 --
--- The task is as follows:
--- Given numbers n > k > t.
--- Generate all maximal sets of rows where in each set:
--- * Each row has length "n".
--- * Each row contains exactly "k" ones.
--- * Each pair of rows and'ed together contain less than "t" ones.
--- The maximum number of such rows is "b", where
--- b = B(n,t)/B(k,t).
+-- Given n > k > t >= 1, a row is a set of k of the n columns, and two rows conflict
+-- if they share t or more columns. A solution is a set of b = B(n,t) / B(k,t) rows
+-- where no two rows conflict, which makes it a Steiner system. The rows are
+-- numbered in lexicographic order of their columns, and each solution is sent out
+-- on m_data_o as the sorted list of its row indices. The solutions come out in
+-- lexicographic order, and done_o goes high when the search is finished.
 --
--- For the parameters (7, 3, 2) we get 30 solutions.
+-- For example, (n, k, t) = (9, 3, 2) gives 840 solutions with b = 12 rows each.
+-- Each column is then in r = B(n-1,t-1) / B(k-1,t-1) = 4 rows. One solution is:
 --
--- For the parameters (9, 3, 2) we get 840 solutions, one of which is the following.
--- The number on the left marks which of the C_NUM_ROWS = 84 is chosen.
---
---  6 **......*
--- 11 *.*....*.
--- 15 *..*..*..
--- 18 *...**...
--- 31 .**...*..
--- 35 .*.*.*...
--- 41 .*..*..*.
--- 49 ..***....
--- 60 ..*..*..*
--- 73 ...*...**
--- 78 ....*.*.*
--- 80 .....***.
---
--- Another solution is:
 --  0 ***......
 -- 13 *..**....
 -- 22 *....**..
@@ -44,8 +26,10 @@
 -- 71 ...*..**.
 -- 76 ....**..*
 --
--- Here we see that b = 36/3 = 12 corresponding to number of rows.
--- And r = B(n-1,t-1)/B(k-1,t-1) = 8/2 = 4 corresponds to the sum of each column.
+-- The number on the left is the row index, and column 0 is on the left.
+--
+-- See ALGORITHM.md for how the search works, and how it is built to run at a high
+-- clock frequency.
 
 library ieee;
   use ieee.std_logic_1164.all;
@@ -132,19 +116,19 @@ architecture synthesis of steiner is
   -- Convert a one-hot vector to the index of the bit that is set. This is just an OR
   -- for each bit of the index, rather than a priority encoder.
   pure function index_of(arg : rows_t) return index_t is
-    variable res : natural;
-    variable bit : natural;
+    variable res    : natural;
+    variable weight : natural;
   begin
-    res := 0;
-    bit := 1;
-    while bit < C_NUM_ROWS loop
+    res    := 0;
+    weight := 1;
+    while weight < C_NUM_ROWS loop
       for i in 0 to C_NUM_ROWS-1 loop
-        if (i / bit) mod 2 = 1 and arg(i) = '1' then
-          res := res + bit;
+        if (i / weight) mod 2 = 1 and arg(i) = '1' then
+          res := res + weight;
           exit;
         end if;
       end loop;
-      bit := bit * 2;
+      weight := weight * 2;
     end loop;
     return res;
   end function index_of;
@@ -171,7 +155,8 @@ architecture synthesis of steiner is
   -- vector
   signal seg_lowest : rows_t;
 
-  -- The rows that fit with each bit of "seg_lowest"
+  -- The rows that fit with the first row of "cand" in each segment. Like the output
+  -- of "valid", this only checks the rows from that row and up.
   signal seg_compat : rows_vec_t(0 to 2);
 
   -- The rows that fit with the first row in "cand"
@@ -183,7 +168,7 @@ architecture synthesis of steiner is
   -- The number of rows placed so far, and some values derived from it. These are
   -- kept in registers to keep them out of the critical path.
   signal depth      : natural range 0 to C_B;
-  signal depth_m1   : natural range 0 to C_B-1; -- depth - 1
+  signal depth_m1   : natural range 0 to C_B-1; -- depth - 1, or 0 when depth = 0
   signal empty      : std_logic;                -- depth = 0
   signal full       : std_logic;                -- depth = C_B
   signal allow1     : std_logic;                -- depth >= C_R
@@ -195,10 +180,10 @@ architecture synthesis of steiner is
   signal stack      : rows_vec_t(0 to C_B-1);
   signal positions  : index_vec_t(0 to C_B-1);
 
-  -- Writing to the stack is delayed by one clock cycle, to keep it out of the
-  -- critical path. These registers hold the values needed for the write, after a row
-  -- was placed in the previous clock cycle. They are loaded every clock cycle, so
-  -- they don't depend on the decision to place a row.
+  -- Writing to the stack and to "positions" is delayed by one clock cycle, to keep it
+  -- out of the critical path. These registers hold the values needed for the write,
+  -- after a row was placed in the previous clock cycle. They are loaded every clock
+  -- cycle, so they don't depend on the decision to place a row.
   signal placed       : std_logic;
   signal placed_depth : natural range 0 to C_B-1;
   signal placed_cand  : rows_t;
@@ -258,9 +243,12 @@ begin
   top_cand <= placed_rest when placed = '1' else stack(depth_m1);
 
   -- Each clock cycle the search does one of these things:
-  -- * Sends a solution, if all rows are placed, and then removes the last row.
-  -- * Places the first remaining candidate row.
+  -- * If all rows are placed: Sends the solution and removes the last row, or waits
+  --   if the previous solution hasn't been accepted yet.
+  -- * Places the first remaining candidate row, if the early pruning allows it.
   -- * Removes the last row, if there are no candidates left.
+  -- * Sets done_o, if there are no candidates left and no rows placed, once the last
+  --   solution has been accepted.
   main_proc : process (clk_i)
     variable solution : index_vec_t(0 to C_B-1);
 
@@ -290,6 +278,7 @@ begin
       -- Complete the write to the stack, if a row was placed in the previous clock
       -- cycle
       placed       <= '0';
+      -- When "depth" is C_B, no row is placed, so "placed_depth" is not used
       placed_depth <= minimum(depth, C_B-1);
       placed_cand  <= cand;
       placed_seg   <= seg_lowest;

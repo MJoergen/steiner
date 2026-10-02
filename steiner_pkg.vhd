@@ -1,4 +1,4 @@
--- Declarations shared by the search, the testbench and the board top level.
+-- Declarations shared by the search (steiner.vhd and valid.vhd) and the testbench.
 
 package steiner_pkg is
 

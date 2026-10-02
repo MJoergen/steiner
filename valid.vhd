@@ -1,3 +1,9 @@
+-- Given one selected row, as a one-hot vector, this outputs the set of rows that
+-- don't conflict with it, i.e. that share fewer than "t" columns with it. The table
+-- of which rows conflict is calculated at elaboration time, and the logic is purely
+-- combinational. The search in steiner.vhd uses one instance for each segment of
+-- the rows.
+
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.numeric_std.all;
@@ -41,13 +47,14 @@ architecture synthesis of valid is
   -- Each row has length "n".
   type ram_t is array (natural range <>) of std_logic_vector(G_N-1 downto 0);
 
-  -- This calculates an array of all possible combinations of N choose K.
+  -- This calculates an array of all possible combinations of N choose K, i.e. all
+  -- the rows, numbered in lexicographic order of their columns. Bit "j" of a row is
+  -- column "j".
   pure function combination_init(n : natural; k : natural) return ram_t is
     variable res : ram_t(G_NUM_ROWS-1 downto 0) := (others => (others => '0'));
     variable kk  : natural := k;
     variable ii  : natural := 0;
   begin
-    report "combination_init: n=" & to_string(n) & ", k=" & to_string(k);
     loop_i : for i in 0 to G_NUM_ROWS-1 loop
       kk := k;
       ii := i;
@@ -62,9 +69,10 @@ architecture synthesis of valid is
           ii := ii - binom(n-j-1, kk-1);
         end if;
       end loop loop_j;
-      assert(count_ones(res(i)) = G_K);
+      assert count_ones(res(i)) = G_K
+        report "Row " & to_string(i) & " doesn't have " & to_string(G_K) & " ones"
+        severity failure;
     end loop loop_i;
-    report "combination_init done.";
     return res;
   end function combination_init;
 

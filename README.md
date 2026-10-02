@@ -13,7 +13,7 @@ On the Nexys 4 DDR board it runs at 180 MHz, and finds all 840 solutions for
 
 ## The problem
 
-Given numbers `n > k > t`, find every set of rows where:
+Given numbers `n > k > t >= 1`, find every set of rows where:
 
 * each row has length `n`,
 * each row contains exactly `k` ones, and
@@ -87,6 +87,9 @@ the clock frequency.
 | [`nexys4ddr.vhd`](nexys4ddr.vhd), [`nexys4ddr.xdc`](nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |
 | `result_*.txt`                             | All solutions for the parameters in the file name.       |
 | [`ALGORITHM.md`](ALGORITHM.md)             | Detailed explanation of the algorithm and its timing.    |
+| [`Makefile`](Makefile)                     | Runs the simulation, the formal verification, and the synthesis, see [Running](#running). |
+| [`.github/workflows/`](.github/workflows)  | The CI, see [Running](#running).                         |
+| [`LICENSE`](LICENSE)                       | The MIT license.                                         |
 
 ## Interface
 
@@ -124,6 +127,7 @@ Type `make` to list the supported targets:
 * `make vivado` builds the bitstream for the board, see [Synthesis](#synthesis). It
   expects Vivado 2025.1 in `/opt/Xilinx/2025.1/Vivado` (the variable `XILINX_DIR`),
   and takes about 2 minutes.
+* `make clean` removes the generated files.
 
 The CI runs `make check` ([`sim.yml`](.github/workflows/sim.yml)) and `make formal`
 ([`formal.yml`](.github/workflows/formal.yml)) for every push to `main` and every
@@ -145,7 +149,9 @@ its own table of rows, independently of `valid.vhd`, and fails if:
 * the number of solutions is wrong for one of the known results.
 
 For other parameters it prints the number of solutions as a warning. If you find a
-new result, add it to `expected_count` in `steiner_tb.vhd`.
+new result, add it to `expected_count` in `steiner_tb.vhd`. For larger parameters
+you may need to raise `G_TIMEOUT`. GHDL can't set it from the command line, so edit
+its default value in `steiner_tb.vhd`.
 
 These checks can't tell whether a solution is missing. So `make check` also
 compares the solutions with those of [`steiner_ref.py`](steiner_ref.py), and with

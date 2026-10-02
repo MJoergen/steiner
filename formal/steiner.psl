@@ -32,11 +32,11 @@ vunit i_steiner(steiner(synthesis))
    signal f_pos_compatible : std_logic;
    signal f_pos_pruned    : std_logic;
    signal f_cand_exact    : std_logic;
+   signal f_stack_exact   : std_logic;
 
    -- No row has been tried yet at the current depth, i.e. the most recent step
    -- was a reset or placing a row, rather than removing one
    signal f_fresh         : std_logic;
-   signal f_stack_exact   : std_logic;
 
 
    -- set all declarations to run on clk_i
@@ -148,6 +148,26 @@ vunit i_steiner(steiner(synthesis))
 
    f_placed_first <= placed_cand and std_logic_vector(unsigned(not placed_cand) + 1);
 
+   -- This follows the decisions in main_proc in steiner.vhd: a place sets
+   -- "f_fresh", and removing a row clears it
+   p_fresh : process (clk_i)
+   begin
+      if rising_edge(clk_i) then
+         if full = '1' then
+            if m_valid_o = '0' or m_ready_i = '1' then
+               f_fresh <= '0';
+            end if;
+         elsif place = '1' then
+            f_fresh <= '1';
+         elsif empty = '0' then
+            f_fresh <= '0';
+         end if;
+         if rst_i = '1' then
+            f_fresh <= '1';
+         end if;
+      end if;
+   end process p_fresh;
+
    p_invariants : process (all)
       -- The rows that come after row "x"
       pure function rows_after(x : natural) return rows_t is
@@ -231,24 +251,6 @@ vunit i_steiner(steiner(synthesis))
    f_pos_sorted_a       : assert always {not rst_i} |-> {f_pos_sorted};
    f_pos_compatible_a   : assert always {not rst_i} |-> {f_pos_compatible};
    f_pos_pruned_a       : assert always {not rst_i} |-> {f_pos_pruned};
-   p_fresh : process (clk_i)
-   begin
-      if rising_edge(clk_i) then
-         if full = '1' then
-            if m_valid_o = '0' or m_ready_i = '1' then
-               f_fresh <= '0';
-            end if;
-         elsif place = '1' then
-            f_fresh <= '1';
-         elsif empty = '0' then
-            f_fresh <= '0';
-         end if;
-         if rst_i = '1' then
-            f_fresh <= '1';
-         end if;
-      end if;
-   end process p_fresh;
-
    f_fresh_a            : assert always {not f_fresh and not rst_i} |-> {depth < C_B};
    f_cand_exact_a       : assert always {not rst_i} |-> {f_cand_exact};
    f_stack_exact_a      : assert always {not rst_i} |-> {f_stack_exact};

@@ -65,12 +65,14 @@ of the search is:
 After reset, `depth` is 0 and `cand` holds every row. Each clock cycle does
 exactly one of these steps:
 
-| Condition                     | Step        | What happens                                                                                     |
-| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
-| `depth = b`                   | Output      | Send `positions` as a solution, then backtrack (once the previous solution has been accepted).   |
-| `cand` has a row              | Place       | Let `c` be the first row in `cand`. Push `cand` without `c`, set `positions(depth) := c`, set `cand := cand and compat(c)`, and increment `depth`. |
-| `cand` is empty, `depth > 0`  | Backtrack   | Pop the stack into `cand`, and decrement `depth`.                                                |
-| `cand` is empty, `depth = 0`  | Done        | Set `done_o`.                                                                                    |
+| Condition                         | Step        | What happens                                                                                     |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `depth = b`                       | Output      | Send `positions` as a solution, then backtrack (once the previous solution has been accepted).   |
+| `cand` has a row                  | Place       | Let `c` be the first row in `cand`. Push `cand` without `c`, set `positions(depth) := c`, set `cand := cand and compat(c)`, and increment `depth`. |
+| `cand` has no row, `depth > 0`    | Backtrack   | Pop the stack into `cand`, and decrement `depth`.                                                |
+| `cand` has no row, `depth = 0`    | Done        | Set `done_o` (once the last solution has been accepted).                                         |
+
+Here a row that the [early pruning](#early-pruning) forbids counts as no row.
 
 Here `compat(c)` is the set of rows that don't conflict with `c`. It doesn't
 contain `c` itself, so `c` is removed from `cand`. It does contain the rows
@@ -95,8 +97,9 @@ The search keeps this invariant in every clock cycle:
 Place keeps it, because the rows after `c` in `cand` that don't conflict with
 `c` are exactly the rows for the next depth. Backtrack keeps it, because the
 popped entry is exactly the rows after the removed row. Since rows are always
-taken from `cand` in increasing order, no set of rows is skipped or visited
-twice, and the solutions come out in lexicographic order. The formal
+taken from `cand` in increasing order, no set of rows is visited twice, none is
+skipped except by the early pruning, and the solutions come out in
+lexicographic order. The formal
 verification checks this invariant in every clock cycle, see
 [`formal/steiner.psl`](formal/steiner.psl).
 
@@ -114,7 +117,8 @@ same clock cycle. It also spent one clock cycle on every row that didn't fit.
 | (8, 4, 3)   | 474,896         | 12,510      | 38.0  |
 
 These are clock cycles for the whole search, when every solution is accepted
-right away.
+right away. For `(8, 4, 3)`, the original design is taken with the fix of the
+[early pruning](#early-pruning) for `t > 2`. Without it, it found no solutions.
 
 ## Early pruning
 
@@ -191,8 +195,8 @@ levels of LUTs.
 ### The stack
 
 The stack is only ever read at the top (`depth - 1`), and only written at the
-entry of the row being placed, so it fits in distributed RAM: 84 bits wide and 12 entries deep
-for `(9, 3, 2)`, which takes 56 LUTs. Unlike a stack in flip-flops, it doesn't
+entry of the row being placed, so it fits in distributed RAM: 84 bits wide and
+12 entries deep for `(9, 3, 2)`, which takes 56 LUTs. Unlike a stack in flip-flops, it doesn't
 add to the fanout of the decision to place or backtrack.
 
 Writing to the stack is delayed by one clock cycle, so that the carry chains

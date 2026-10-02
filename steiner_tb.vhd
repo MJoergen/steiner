@@ -1,3 +1,13 @@
+-- Testbench for the search in steiner.vhd. It runs the search to the end, stalls
+-- the output stream at random, and checks every solution, independently of
+-- valid.vhd. It writes the solutions to G_OUTPUT, in the same format as the results
+-- files, and fails if a check fails, if the search takes longer than G_TIMEOUT, or
+-- if the number of solutions is wrong for one of the known results.
+--
+-- GHDL can set the integer and string generics from the command line, e.g.
+-- -gG_N=7, but not G_TIMEOUT, since it is a time. To change it, edit its default
+-- value below.
+
 library ieee;
   use ieee.std_logic_1164.all;
   use ieee.numeric_std.all;
@@ -118,8 +128,9 @@ begin
       done_o    => done
     ); -- steiner_inst
 
-  -- Hold m_ready low for random periods averaging 1024 clock cycles. Solutions are
-  -- several hundred clock cycles apart, so this makes the search wait sometimes.
+  -- Hold m_ready low for random periods averaging 1024 clock cycles, about once
+  -- every 4096 clock cycles. For (9, 3, 2), solutions are about 150 clock cycles
+  -- apart on average, so this makes the search wait for some of them.
   ready_proc : process (clk)
     variable seed1 : positive := 1;
     variable seed2 : positive := 1;
