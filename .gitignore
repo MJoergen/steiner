@@ -4,6 +4,7 @@
 *.ghw
 steiner_tb
 steiner_tb.txt
+uart_tb
 check_*
 
 # Vivado synthesis

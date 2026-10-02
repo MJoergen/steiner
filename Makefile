@@ -2,6 +2,7 @@ XILINX_DIR = /opt/Xilinx/2025.1/Vivado
 SRC  = steiner_pkg.vhd
 SRC += valid.vhd
 SRC += steiner.vhd
+SRC += uart.vhd
 TOP = nexys4ddr
 
 TB = steiner_tb
@@ -14,7 +15,10 @@ T = 2
 # Admissible parameter sets that "make check" compares with steiner_ref.py
 CHECK = 4_2_1 6_2_1 6_3_1 7_3_2 8_2_1 8_4_1 8_4_3 9_3_1 9_3_2 10_2_1 10_5_1
 
-.PHONY: help sim check show formal vivado clean
+# Clock divisors that "make uart" simulates uart.vhd with
+UART_DIVISORS = 2 5 16 17
+
+.PHONY: help sim check uart show formal vivado clean
 
 help:
 	@echo "Supported targets:"
@@ -23,6 +27,8 @@ help:
 	@echo "                   and checking each solution"
 	@echo "  make check       Simulate the design for each parameter set in CHECK, and"
 	@echo "                   compare the solutions with steiner_ref.py"
+	@echo "  make uart        Simulate uart.vhd using GHDL for each clock divisor in"
+	@echo "                   UART_DIVISORS"
 	@echo "  make show        Show the simulation waveform using GTKWave"
 	@echo "  make formal      Run formal verification using SymbiYosys"
 	@echo "  make vivado      Synthesize the design using Vivado, writing $(TOP).bit"
@@ -53,6 +59,13 @@ check:
 	  fi; \
 	done
 	@echo "All solutions match steiner_ref.py"
+
+uart:
+	ghdl -a --std=08 uart.vhd uart_tb.vhd
+	ghdl -e --std=08 uart_tb
+	@for g in $(UART_DIVISORS); do \
+	  ghdl -r --std=08 uart_tb -gG_DIVISOR=$$g --assert-level=error || exit 1; \
+	done
 
 show:
 	gtkwave $(TB).ghw $(TB).gtkw
@@ -95,7 +108,7 @@ $(TOP).tcl: Makefile
 ################################################
 
 clean:
-	rm -f *.cf *.o *.ghw $(TB) $(TB).txt check_*
+	rm -f *.cf *.o *.ghw $(TB) $(TB).txt check_* uart_tb
 	rm -rf .Xil
 	rm -f $(TOP).tcl $(TOP).bit *.dcp *.rpt *.jou *.log
 	rm -f clockInfo.txt tight_setup_hold_pins.txt usage_statistics_webtalk.*
