@@ -6,9 +6,9 @@
 -- Given n > k > t >= 1, a row is a set of k of the n columns, and two rows conflict
 -- if they share t or more columns. A solution is a set of b = B(n,t) / B(k,t) rows
 -- where no two rows conflict, which makes it a Steiner system. The rows are
--- numbered in lexicographic order of their columns, and each solution is sent out
--- on m_data_o as the sorted list of its row indices. The solutions come out in
--- lexicographic order, and done_o goes high when the search is finished.
+-- numbered in lexicographic order of their columns. The solutions come out in
+-- lexicographic order of their row indices, and done_o goes high when the search
+-- is finished.
 --
 -- For example, (n, k, t) = (9, 3, 2) gives 840 solutions with b = 12 rows each.
 -- Each column is then in r = B(n-1,t-1) / B(k-1,t-1) = 4 rows. One solution is:
@@ -27,6 +27,12 @@
 -- 76 ....**..*
 --
 -- The number on the left is the row index, and column 0 is on the left.
+--
+-- Each solution is sent out on m_data_o as its b rows in increasing order, with
+-- n bits for each row and one bit for each column. Row i of the solution is
+-- m_data_o(i*n to i*n+n-1), with column 0 first, so m_data_o holds the picture
+-- above without the row indices, one row after the other:
+-- "111000000" & "100110000" & "100001100" & ... & "000011001".
 --
 -- See ALGORITHM.md for how the search works, and how it is built to run at a high
 -- clock frequency.
@@ -49,7 +55,8 @@ entity steiner is
     -- AXI-style stream with one solution at a time
     m_valid_o : out std_logic := '0';
     m_ready_i : in  std_logic;
-    m_data_o  : out solution_t(0 to binom(G_N, G_T) / binom(G_K, G_T) - 1);
+    -- One solution: b rows of n bits each, see above
+    m_data_o  : out std_logic_vector(0 to binom(G_N, G_T) / binom(G_K, G_T) * G_N - 1);
     -- The search is finished and the last solution has been accepted
     done_o    : out std_logic := '0'
   );
@@ -110,28 +117,50 @@ architecture synthesis of steiner is
   subtype rows_t is std_logic_vector(C_NUM_ROWS-1 downto 0);
   type rows_vec_t is array (natural range <>) of rows_t;
 
-  subtype index_t is natural range 0 to C_NUM_ROWS-1;
-  type index_vec_t is array (natural range <>) of index_t;
+  -- One bit for each of the n columns of a row, with column 0 first
+  subtype columns_t is std_logic_vector(0 to G_N-1);
+  type columns_vec_t is array (natural range <>) of columns_t;
 
-  -- Convert a one-hot vector to the index of the bit that is set. This is just an OR
-  -- for each bit of the index, rather than a priority encoder.
-  pure function index_of(arg : rows_t) return index_t is
-    variable res    : natural;
-    variable weight : natural;
+  -- The columns of each row. Rows are numbered in lexicographic order of their
+  -- columns, so row "i" is found one column at a time: column "j" is in the row
+  -- if "i" is less than the number of rows that have it, given the columns before.
+  pure function columns_init return columns_vec_t is
+    variable res : columns_vec_t(0 to C_NUM_ROWS-1);
+    variable kk  : natural;
+    variable ii  : natural;
   begin
-    res    := 0;
-    weight := 1;
-    while weight < C_NUM_ROWS loop
-      for i in 0 to C_NUM_ROWS-1 loop
-        if (i / weight) mod 2 = 1 and arg(i) = '1' then
-          res := res + weight;
-          exit;
+    for i in res'range loop
+      res(i) := (others => '0');
+      kk     := G_K;
+      ii     := i;
+      for j in 0 to G_N-1 loop
+        exit when kk = 0;
+        if ii < binom(G_N-j-1, kk-1) then
+          res(i)(j) := '1';
+          kk        := kk - 1;
+        else
+          ii        := ii - binom(G_N-j-1, kk-1);
         end if;
       end loop;
-      weight := weight * 2;
     end loop;
     return res;
-  end function index_of;
+  end function columns_init;
+
+  constant C_COLUMNS : columns_vec_t(0 to C_NUM_ROWS-1) := columns_init;
+
+  -- Convert a one-hot vector to the columns of the row whose bit is set. This is
+  -- just an OR for each column, of the rows that have it.
+  pure function columns_of(arg : rows_t) return columns_t is
+    variable res : columns_t;
+  begin
+    res := (others => '0');
+    for i in 0 to C_NUM_ROWS-1 loop
+      if arg(i) = '1' then
+        res := res or C_COLUMNS(i);
+      end if;
+    end loop;
+    return res;
+  end function columns_of;
 
   -- Isolate the lowest set bit. This maps onto a carry chain.
   pure function lowest_of(arg : std_logic_vector) return std_logic_vector is
@@ -174,11 +203,12 @@ architecture synthesis of steiner is
   signal allow1     : std_logic;                -- depth >= C_R
   signal allow2     : std_logic;                -- depth >= 2*C_R-C_L2
 
-  -- Entry "d" is the row placed when "d" rows had already been placed, and the rows
-  -- that remain to be tried in its place afterwards. The stack is only ever read
-  -- at entry "depth-1", so it fits in distributed RAM.
+  -- Entry "d" of "positions" is the columns of the row placed when "d" rows had
+  -- already been placed, and entry "d" of the stack is the rows that remain to be
+  -- tried in its place afterwards. The stack is only ever read at entry "depth-1",
+  -- so it fits in distributed RAM.
   signal stack      : rows_vec_t(0 to C_B-1);
-  signal positions  : index_vec_t(0 to C_B-1);
+  signal positions  : columns_vec_t(0 to C_B-1);
 
   -- Writing to the stack and to "positions" is delayed by one clock cycle, to keep it
   -- out of the critical path. These registers hold the values needed for the write,
@@ -250,7 +280,7 @@ begin
   -- * Sets done_o, if there are no candidates left and no rows placed, once the last
   --   solution has been accepted.
   main_proc : process (clk_i)
-    variable solution : index_vec_t(0 to C_B-1);
+    variable solution : columns_vec_t(0 to C_B-1);
 
     procedure set_depth (d : natural) is
     begin
@@ -285,7 +315,7 @@ begin
       placed_any   <= any(0 to 1);
       if placed = '1' then
         stack(placed_depth)     <= placed_rest;
-        positions(placed_depth) <= index_of(placed_row);
+        positions(placed_depth) <= columns_of(placed_row);
       end if;
 
       if full = '1' then
@@ -293,12 +323,10 @@ begin
         if m_valid_o = '0' or m_ready_i = '1' then
           solution := positions;
           if placed = '1' then
-            solution(placed_depth) := index_of(placed_row);
+            solution(placed_depth) := columns_of(placed_row);
           end if;
-          -- Copied element by element, because GHDL synthesis (used for formal
-          -- verification) gets the array type conversion solution_t(solution) wrong.
           for i in solution'range loop
-            m_data_o(i) <= solution(i);
+            m_data_o(i*G_N to i*G_N+G_N-1) <= solution(i);
           end loop;
           m_valid_o <= '1';
           pop;

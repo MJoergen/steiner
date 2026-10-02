@@ -1,9 +1,17 @@
 vunit i_steiner(steiner(synthesis))
 {
-   -- The row placed at each depth. If a row was placed in the previous clock
+   type f_index_vec_t is array (natural range <>) of natural range 0 to C_NUM_ROWS-1;
+
+   -- The columns of the row placed at each depth, and the index of that row (or 0
+   -- if no row has these columns). If a row was placed in the previous clock
    -- cycle, its entry in "positions" has not been written yet, so it is taken
    -- from "placed_row" instead.
-   signal f_pos           : index_vec_t(0 to C_B-1);
+   signal f_cols          : columns_vec_t(0 to C_B-1);
+   signal f_pos           : f_index_vec_t(0 to C_B-1);
+
+   -- The same for each row of the output solution
+   signal f_data_cols     : columns_vec_t(0 to C_B-1);
+   signal f_data_pos      : f_index_vec_t(0 to C_B-1);
 
    -- The same for the stack: the rows left to try at each depth
    signal f_stack         : rows_vec_t(0 to C_B-1);
@@ -64,8 +72,10 @@ vunit i_steiner(steiner(synthesis))
    -- increasing order, where every two rows are compatible. The rows are
    -- checked with separate instances of the valid module.
    f_data_gen : for i in 0 to C_B-1 generate
+      f_data_cols(i) <= m_data_o(i*G_N to i*G_N+G_N-1);
+
       f_data_sel_gen : for j in 0 to C_NUM_ROWS-1 generate
-         f_data_sel(i)(j) <= '1' when m_data_o(i) = j else '0';
+         f_data_sel(i)(j) <= '1' when f_data_cols(i) = C_COLUMNS(j) else '0';
       end generate f_data_sel_gen;
 
       f_valid_inst : entity work.valid
@@ -83,16 +93,34 @@ vunit i_steiner(steiner(synthesis))
          );
    end generate f_data_gen;
 
+   -- The index of each row, found from its columns
+   p_index : process (all)
+   begin
+      for i in 0 to C_B-1 loop
+         f_pos(i)      <= 0;
+         f_data_pos(i) <= 0;
+         for j in 0 to C_NUM_ROWS-1 loop
+            if f_cols(i) = C_COLUMNS(j) then
+               f_pos(i) <= j;
+            end if;
+            if f_data_cols(i) = C_COLUMNS(j) then
+               f_data_pos(i) <= j;
+            end if;
+         end loop;
+      end loop;
+   end process p_index;
+
    p_data : process (all)
    begin
       f_data_in_range   <= '1';
       f_data_sorted     <= '1';
       f_data_compatible <= '1';
       for i in 0 to C_B-1 loop
-         if m_data_o(i) >= C_NUM_ROWS then
+         -- Every row has "k" columns, i.e. it is one of the rows
+         if f_data_cols(i) /= C_COLUMNS(f_data_pos(i)) then
             f_data_in_range <= '0';
          end if;
-         if i > 0 and m_data_o(i-1) >= m_data_o(i) then
+         if i > 0 and f_data_pos(i-1) >= f_data_pos(i) then
             f_data_sorted <= '0';
          end if;
          -- Check both ways, so this does not rely on the rows being sorted
@@ -117,10 +145,10 @@ vunit i_steiner(steiner(synthesis))
    p_pos : process (all)
    begin
       for i in 0 to C_B-1 loop
-         f_pos(i)   <= positions(i);
+         f_cols(i)  <= positions(i);
          f_stack(i) <= stack(i);
          if placed = '1' and placed_depth = i then
-            f_pos(i)   <= index_of(placed_row);
+            f_cols(i)  <= columns_of(placed_row);
             f_stack(i) <= placed_rest;
          end if;
       end loop;
@@ -203,8 +231,8 @@ vunit i_steiner(steiner(synthesis))
 
       for i in 0 to C_B-1 loop
          if i < depth then
-            -- Every placed row is in range
-            if f_pos(i) >= C_NUM_ROWS then
+            -- Every placed row has "k" columns, i.e. it is one of the rows
+            if f_cols(i) /= C_COLUMNS(f_pos(i)) then
                f_pos_in_range <= '0';
             end if;
             -- The rows are placed in strictly increasing order

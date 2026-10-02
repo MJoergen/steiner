@@ -105,8 +105,12 @@ architecture simulation of steiner_tb is
   signal done    : std_logic := '0';
   signal m_valid : std_logic;
   signal m_ready : std_logic := '1';
-  signal m_data  : solution_t(0 to C_B-1);
+  signal m_data  : std_logic_vector(0 to C_B*G_N-1);
   signal count   : natural;
+
+  -- The indices of the rows of the solution on m_data, or C_NUM_ROWS for a row that
+  -- doesn't have "k" ones
+  signal indices : integer_vector(0 to C_B-1);
 
 begin
 
@@ -147,6 +151,19 @@ begin
     end if;
   end process ready_proc;
 
+  -- Find the index of each row of the solution in the table of rows
+  indices_proc : process (all)
+  begin
+    for i in 0 to C_B-1 loop
+      indices(i) <= C_NUM_ROWS;
+      for j in C_ROWS'range loop
+        if m_data(i*G_N to i*G_N+G_N-1) = C_ROWS(j) then
+          indices(i) <= j;
+        end if;
+      end loop;
+    end loop;
+  end process indices_proc;
+
   -- Report each solution, and write it to G_OUTPUT in the format of the results files
   output_proc : process (clk)
     file     output_file : text open write_mode is G_OUTPUT;
@@ -159,7 +176,7 @@ begin
           if i /= 0 then
             write(l, string'(", "));
           end if;
-          write(l, m_data(i));
+          write(l, indices(i));
         end loop;
         write(l, string'("]"));
         report l.all;
@@ -169,13 +186,13 @@ begin
   end process output_proc;
 
   -- Check each solution as it is received:
-  -- * The row indices are in range and strictly increasing.
+  -- * Each row has "k" ones, and the row indices are strictly increasing.
   -- * Each pair of rows shares fewer than "t" ones.
   -- * Every set of "t" columns is in exactly one row, so it is a Steiner system.
   -- * The solution comes after the previous one in lexicographic order, so no
   --   solution is received twice.
   verify_proc : process (clk)
-    variable prev    : solution_t(0 to C_B-1);
+    variable prev    : integer_vector(0 to C_B-1);
     variable first   : boolean := true;
     variable common  : natural;
     variable covered : natural;
@@ -183,11 +200,13 @@ begin
     if rising_edge(clk) then
       if m_valid = '1' and m_ready = '1' then
         for i in 0 to C_B-1 loop
-          assert m_data(i) < C_NUM_ROWS
-            report "Row index " & to_string(m_data(i)) & " out of range"
+          assert indices(i) < C_NUM_ROWS
+            report "Row " & to_string(i) & " of the solution is " &
+                   to_string(m_data(i*G_N to i*G_N+G_N-1)) & ", which doesn't have " &
+                   to_string(G_K) & " ones"
             severity failure;
           if i > 0 then
-            assert m_data(i) > m_data(i-1)
+            assert indices(i) > indices(i-1)
               report "Row indices not strictly increasing at position " & to_string(i)
               severity failure;
           end if;
@@ -195,9 +214,9 @@ begin
 
         for i in 0 to C_B-1 loop
           for j in i+1 to C_B-1 loop
-            common := count_ones(C_ROWS(m_data(i)) and C_ROWS(m_data(j)));
+            common := count_ones(C_ROWS(indices(i)) and C_ROWS(indices(j)));
             assert common < G_T
-              report "Rows " & to_string(m_data(i)) & " and " & to_string(m_data(j)) &
+              report "Rows " & to_string(indices(i)) & " and " & to_string(indices(j)) &
                      " share " & to_string(common) & " ones"
               severity failure;
           end loop;
@@ -207,7 +226,7 @@ begin
         for s in C_TSETS'range loop
           covered := 0;
           for i in 0 to C_B-1 loop
-            if (C_ROWS(m_data(i)) and C_TSETS(s)) = C_TSETS(s) then
+            if (C_ROWS(indices(i)) and C_TSETS(s)) = C_TSETS(s) then
               covered := covered + 1;
             end if;
           end loop;
@@ -219,8 +238,8 @@ begin
 
         if not first then
           for i in 0 to C_B-1 loop
-            if m_data(i) /= prev(i) then
-              assert m_data(i) > prev(i)
+            if indices(i) /= prev(i) then
+              assert indices(i) > prev(i)
                 report "Solution not after the previous one"
                 severity failure;
               exit;
@@ -231,7 +250,7 @@ begin
           end loop;
         end if;
 
-        prev  := m_data;
+        prev  := indices;
         first := false;
       end if;
     end if;

@@ -2,9 +2,6 @@
 
 package steiner_pkg is
 
-  -- One solution: the indices of the chosen rows
-  type solution_t is array (natural range <>) of natural;
-
   -- Calculate the binomial coefficient B(n,k)
   pure function binom(n : natural; k : natural) return natural;
 

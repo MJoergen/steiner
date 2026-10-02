@@ -57,7 +57,7 @@ rows in increasing order, so each set of rows is visited only once. The state
 of the search is:
 
 * `depth`: the number of rows placed so far,
-* `positions`: the rows placed so far,
+* `positions`: the rows placed so far, each as `n` bits with one bit per column,
 * `cand`: the rows that can still be tried at the current depth, and
 * a stack with one entry for each placed row: the rows that were left to try at
   its depth when it was placed.
@@ -200,16 +200,16 @@ entry of the row being placed, so it fits in distributed RAM: 84 bits wide and
 add to the fanout of the decision to place or backtrack.
 
 Writing to the stack is delayed by one clock cycle, so that the carry chains
-and the encoding of the row index aren't in series with the RAM write. In the
-clock cycle after a place, the stack entry and the row index in `positions` are
-written from registers that hold the values from the place. These registers
-are loaded in every clock cycle, so that they don't need a clock enable that
-depends on the decision. Two cases need the pending write:
+and the encoding of the row's columns aren't in series with the RAM write. In
+the clock cycle after a place, the stack entry and the row's columns in
+`positions` are written from registers that hold the values from the place.
+These registers are loaded in every clock cycle, so that they don't need a clock
+enable that depends on the decision. Two cases need the pending write:
 
 * A backtrack right after a place reads the stack entry that is being written.
   So a bypass returns the pending value instead.
 * When a solution is output in the clock cycle right after its last row was
-  placed, the index of that row is taken from the pending write.
+  placed, the columns of that row are taken from the pending write.
 
 ## Timing
 

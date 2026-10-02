@@ -79,7 +79,7 @@ the clock frequency.
 |--------------------------------------------|----------------------------------------------------------|
 | [`steiner.vhd`](steiner.vhd)               | The search.                                              |
 | [`valid.vhd`](valid.vhd)                   | The rows that don't conflict with a given row.           |
-| [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Solution type and binomial coefficient function.         |
+| [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Binomial coefficient function.                           |
 | [`steiner_tb.vhd`](steiner_tb.vhd)         | Testbench, see [Simulation](#simulation).                |
 | [`steiner_tb.gtkw`](steiner_tb.gtkw)       | GTKWave setup for viewing the waveform from `make sim`.  |
 | [`steiner_ref.py`](steiner_ref.py)         | Reference model in Python, see [Simulation](#simulation). |
@@ -100,11 +100,20 @@ The generics `G_N`, `G_K` and `G_T` are the parameters `n`, `k` and `t`.
 | `clk_i`                 | in        | Clock.                                                             |
 | `rst_i`                 | in        | Synchronous reset, active high. The search starts after the reset. |
 | `m_valid_o`, `m_ready_i`| out, in   | AXI-style handshake of the solutions.                              |
-| `m_data_o`              | out       | One solution: the `b` row indices, in increasing order.            |
+| `m_data_o`              | out       | One solution: its `b` rows of `n` bits each, see below.            |
 | `done_o`                | out       | The search is finished, and the last solution has been accepted.   |
 
-The solutions come out in lexicographic order. While a solution is waiting to be
-accepted, the search pauses.
+`m_data_o` has `b * n` bits, `n` bits for each row of the solution, with one bit for
+each column. The rows come in increasing order of their index. Row `i` of the
+solution is `m_data_o(i*n to i*n+n-1)`, with column 0 first. So for the Fano plane
+above, `m_data_o` is the picture without the row indices, one row after the other:
+
+```
+"1110000" & "1001100" & "1000011" & "0101010" & "0100101" & "0011001" & "0010110"
+```
+
+The solutions come out in lexicographic order of their row indices. While a
+solution is waiting to be accepted, the search pauses.
 
 ## Running
 
@@ -135,12 +144,13 @@ pull request.
 
 ## Simulation
 
-The testbench runs the search to the end, and writes the solutions to
-`steiner_tb.txt` in the same format as the results files. It holds `m_ready_i` low
+The testbench runs the search to the end, finds the index of each row of
+`m_data_o`, and writes the solutions to `steiner_tb.txt` in the same format as the
+results files. It holds `m_ready_i` low
 for random periods, so that the search has to wait. It checks each solution with
 its own table of rows, independently of `valid.vhd`, and fails if:
 
-* a row index is out of range, or the row indices aren't strictly increasing,
+* a row doesn't have `k` ones, or the row indices aren't strictly increasing,
 * two rows in a solution conflict,
 * a set of `t` columns isn't in exactly one row of a solution, i.e. it isn't a
   Steiner system,
@@ -169,8 +179,8 @@ reachable states by k-induction, with the parameters `(4, 2, 1)`, `(7, 3, 2)` an
 
 * The output holds `m_valid_o` and `m_data_o` until the solution is accepted.
 * `done_o` stays high once set, and is never high while a solution is waiting.
-* Every solution is valid: the row indices are in range and strictly increasing,
-  and no two rows conflict.
+* Every solution is valid: every row has `k` ones, the row indices are strictly
+  increasing, and no two rows conflict.
 * The state of the search is consistent, and no rows are lost: the candidates and
   every stack entry hold exactly the rows they should, see
   [Why it works](ALGORITHM.md#why-it-works).
