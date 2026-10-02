@@ -26,31 +26,31 @@ architecture simulation of steiner_tb is
   subtype row_t is std_logic_vector(0 to G_N-1);
   type rows_t is array (natural range <>) of row_t;
 
-  -- Calculate all rows with "k" ones, numbered in lexicographic order of the column
-  -- positions of their ones. This is done independently of valid.vhd, by stepping
-  -- through the combinations one at a time.
-  pure function rows_init return rows_t is
-    variable res  : rows_t(0 to C_NUM_ROWS-1);
-    variable cols : integer_vector(0 to G_K-1);
+  -- Calculate all sets of "size" columns, as rows with "size" ones, numbered in
+  -- lexicographic order of the column positions of their ones. This is done
+  -- independently of valid.vhd, by stepping through the combinations one at a time.
+  pure function rows_init(size : natural) return rows_t is
+    variable res  : rows_t(0 to binom(G_N, size)-1);
+    variable cols : integer_vector(0 to size-1);
     variable i    : integer;
   begin
-    for j in 0 to G_K-1 loop
+    for j in 0 to size-1 loop
       cols(j) := j;
     end loop;
-    for idx in 0 to C_NUM_ROWS-1 loop
+    for idx in res'range loop
       res(idx) := (others => '0');
-      for j in 0 to G_K-1 loop
+      for j in 0 to size-1 loop
         res(idx)(cols(j)) := '1';
       end loop;
 
       -- Go to the next combination
-      i := G_K-1;
-      while i >= 0 and cols(i) = G_N-G_K+i loop
+      i := size-1;
+      while i >= 0 and cols(i) = G_N-size+i loop
         i := i-1;
       end loop;
       if i >= 0 then
         cols(i) := cols(i) + 1;
-        for j in i+1 to G_K-1 loop
+        for j in i+1 to size-1 loop
           cols(j) := cols(j-1) + 1;
         end loop;
       end if;
@@ -58,7 +58,11 @@ architecture simulation of steiner_tb is
     return res;
   end function rows_init;
 
-  constant C_ROWS : rows_t(0 to C_NUM_ROWS-1) := rows_init;
+  -- All rows with "k" ones
+  constant C_ROWS : rows_t(0 to C_NUM_ROWS-1) := rows_init(G_K);
+
+  -- All sets of "t" columns
+  constant C_TSETS : rows_t(0 to binom(G_N, G_T)-1) := rows_init(G_T);
 
   -- Count number of 1's in a vector
   pure function count_ones(arg : std_logic_vector) return natural is
@@ -156,12 +160,14 @@ begin
   -- Check each solution as it is received:
   -- * The row indices are in range and strictly increasing.
   -- * Each pair of rows shares fewer than "t" ones.
+  -- * Every set of "t" columns is in exactly one row, so it is a Steiner system.
   -- * The solution comes after the previous one in lexicographic order, so no
   --   solution is received twice.
   verify_proc : process (clk)
     variable prev    : solution_t(0 to C_B-1);
     variable first   : boolean := true;
     variable common  : natural;
+    variable covered : natural;
   begin
     if rising_edge(clk) then
       if m_valid = '1' and m_ready = '1' then
@@ -184,6 +190,20 @@ begin
                      " share " & to_string(common) & " ones"
               severity failure;
           end loop;
+        end loop;
+
+        -- It is a Steiner system: every set of "t" columns is in exactly one row
+        for s in C_TSETS'range loop
+          covered := 0;
+          for i in 0 to C_B-1 loop
+            if (C_ROWS(m_data(i)) and C_TSETS(s)) = C_TSETS(s) then
+              covered := covered + 1;
+            end if;
+          end loop;
+          assert covered = 1
+            report "Columns " & to_string(C_TSETS(s)) & " are in " &
+                   to_string(covered) & " rows rather than one"
+            severity failure;
         end loop;
 
         if not first then

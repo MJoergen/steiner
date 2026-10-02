@@ -8,18 +8,9 @@ on:
 
 jobs:
   sim:
-    name: Simulation (${{ matrix.n }}, ${{ matrix.k }}, ${{ matrix.t }})
+    name: Simulation
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    # One job for each parameter set with a known result
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { n: 7, k: 3, t: 2 }
-          - { n: 9, k: 3, t: 2 }
-          - { n: 8, k: 4, t: 3 }
 
     steps:
       - name: Check out the design
@@ -39,14 +30,12 @@ jobs:
           echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
 
       - name: Show tool versions
-        run: ghdl --version | head -1
+        run: |
+          ghdl --version | head -1
+          python3 --version
 
-      # The testbench checks each solution and the number of solutions, and
-      # "make sim" fails if any check fails
-      - name: Run the simulation
-        run: make sim N=${{ matrix.n }} K=${{ matrix.k }} T=${{ matrix.t }}
-
-      # The solutions must also come out exactly as in the results file, in the
-      # same order
-      - name: Compare with the known result
-        run: diff steiner_tb.txt result_${{ matrix.n }}_${{ matrix.k }}_${{ matrix.t }}.txt
+      # Simulates each parameter set in CHECK in the Makefile. The testbench
+      # checks that each solution is a Steiner system, and the solutions must
+      # be exactly those of steiner_ref.py and of the results files.
+      - name: Run the simulations
+        run: make check

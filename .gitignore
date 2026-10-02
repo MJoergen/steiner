@@ -4,6 +4,7 @@
 *.ghw
 steiner_tb
 steiner_tb.txt
+check_*
 
 # Vivado synthesis
 .Xil/

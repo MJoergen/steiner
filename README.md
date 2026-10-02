@@ -28,9 +28,8 @@ exactly once, which makes it a Steiner system. Each column then contains exactly
 A Steiner system can only exist if `b`, `r`, and in general `B(n-i,t-i) / B(k-i,t-i)`
 for every `i` from 0 to `t-1`, are whole numbers. Parameters that meet these
 conditions are called admissible. For example, `(n, 3, 2)` is admissible when `n` is
-1 or 3 modulo 6, and `(n, k, 1)` when `k` divides `n`. Only admissible parameters
-give meaningful results. For other parameters there are no Steiner systems, but the
-design still outputs some sets of rows that aren't Steiner systems, see
+1 or 3 modulo 6, and `(n, k, 1)` when `k` divides `n`. The design only accepts
+admissible parameters, and stops with an error otherwise, see
 [Admissible parameters](ALGORITHM.md#admissible-parameters).
 
 For example, with `(n, k, t) = (7, 3, 2)` there are `b = 7` rows and `r = 3`. One of
@@ -83,6 +82,7 @@ the clock frequency.
 | [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Solution type and binomial coefficient function.         |
 | [`steiner_tb.vhd`](steiner_tb.vhd)         | Testbench, see [Simulation](#simulation).                |
 | [`steiner_tb.gtkw`](steiner_tb.gtkw)       | GTKWave setup for viewing the waveform from `make sim`.  |
+| [`steiner_ref.py`](steiner_ref.py)         | Reference model in Python, see [Simulation](#simulation). |
 | [`formal/`](formal)                        | Formal verification, see [Formal verification](#formal-verification). |
 | [`nexys4ddr.vhd`](nexys4ddr.vhd), [`nexys4ddr.xdc`](nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |
 | `result_*.txt`                             | All solutions for the parameters in the file name.       |
@@ -110,6 +110,9 @@ Type `make` to list the supported targets:
 * `make sim` runs the testbench, see [Simulation](#simulation). This requires
   [GHDL](https://github.com/ghdl/ghdl). It takes about 10 seconds.
   `make sim N=7 K=3 T=2` selects other parameters.
+* `make check` runs the testbench for each parameter set in `CHECK` in the
+  `Makefile`, and compares the solutions with the reference model, see
+  [Simulation](#simulation). This also requires Python 3. It takes about 10 seconds.
 * `make show` shows the waveform from `make sim` in
   [GTKWave](https://gtkwave.sourceforge.net/).
 * `make formal` runs the formal verification, see
@@ -122,10 +125,9 @@ Type `make` to list the supported targets:
   expects Vivado 2025.1 in `/opt/Xilinx/2025.1/Vivado` (the variable `XILINX_DIR`),
   and takes about 2 minutes.
 
-The CI runs the simulation ([`sim.yml`](.github/workflows/sim.yml)) and the formal
-verification ([`formal.yml`](.github/workflows/formal.yml)) for every push to `main`
-and every pull request. The simulation runs for each parameter set with a results
-file, and also checks that the solutions match that file exactly.
+The CI runs `make check` ([`sim.yml`](.github/workflows/sim.yml)) and `make formal`
+([`formal.yml`](.github/workflows/formal.yml)) for every push to `main` and every
+pull request.
 
 ## Simulation
 
@@ -136,12 +138,22 @@ its own table of rows, independently of `valid.vhd`, and fails if:
 
 * a row index is out of range, or the row indices aren't strictly increasing,
 * two rows in a solution conflict,
+* a set of `t` columns isn't in exactly one row of a solution, i.e. it isn't a
+  Steiner system,
 * a solution doesn't come after the previous one in lexicographic order,
 * the search hasn't finished after `G_TIMEOUT` (1100 ms of simulated time), or
 * the number of solutions is wrong for one of the known results.
 
 For other parameters it prints the number of solutions as a warning. If you find a
 new result, add it to `expected_count` in `steiner_tb.vhd`.
+
+These checks can't tell whether a solution is missing. So `make check` also
+compares the solutions with those of [`steiner_ref.py`](steiner_ref.py), and with
+the results file if there is one. The reference model works completely differently
+from the design: It finds the Steiner systems as an exact cover, where every set of
+`t` columns must be in exactly one row, and doesn't use any early pruning. `CHECK`
+holds every admissible parameter set with `n <= 10`, except `(10, 4, 3)`, which takes
+over an hour to simulate. (It has 2520 solutions, and they match too.)
 
 ## Formal verification
 
@@ -169,8 +181,8 @@ gtkwave steiner_prove_421/engine_0/trace_induct.vcd
 ## Synthesis
 
 `make vivado` builds `nexys4ddr.bit` for the Artix-7 `xc7a100tcsg324-1` on the
-Nexys 4 DDR board. It stops with an error if the design doesn't meet timing, and the
-timing report is in `nexys4ddr_timing.rpt`.
+Nexys 4 DDR board. It stops with an error if the parameters aren't admissible, or if
+the design doesn't meet timing. The timing report is in `nexys4ddr_timing.rpt`.
 
 The top level `nexys4ddr.vhd` makes a 180 MHz clock from the 100 MHz board clock
 with an MMCM, and turns the `CPU_RESETN` button into a synchronous reset. The

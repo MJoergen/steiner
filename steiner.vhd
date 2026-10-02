@@ -73,6 +73,29 @@ end entity steiner;
 
 architecture synthesis of steiner is
 
+  -- A Steiner system can only exist if B(n-i,t-i) / B(k-i,t-i) is a whole number for
+  -- every i from 0 to t-1. Other parameters are rejected, because b, r and C_L2 below
+  -- would be rounded down, and the search would output sets of rows that aren't
+  -- Steiner systems. This is checked once, at elaboration time. Vivado only checks
+  -- it with "synth_design -assert".
+  pure function check_parameters return boolean is
+  begin
+    assert G_N > G_K and G_K > G_T and G_T >= 1
+      report "The parameters must satisfy n > k > t >= 1"
+      severity failure;
+    for i in 0 to G_T-1 loop
+      assert binom(G_N-i, G_T-i) mod binom(G_K-i, G_T-i) = 0
+        report "The parameters (n, k, t) = (" & to_string(G_N) & ", " & to_string(G_K) &
+               ", " & to_string(G_T) & ") are not admissible: B(n-" & to_string(i) &
+               ",t-" & to_string(i) & ") / B(k-" & to_string(i) & ",t-" & to_string(i) &
+               ") is not a whole number"
+        severity failure;
+    end loop;
+    return true;
+  end function check_parameters;
+
+  constant C_PARAMETERS_OK : boolean := check_parameters;
+
   constant C_NUM_ROWS : natural := binom(G_N, G_K);
   constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
   constant C_R        : natural := binom(G_N-1, G_T-1) / binom(G_K-1, G_T-1);
