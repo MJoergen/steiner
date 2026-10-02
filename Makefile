@@ -42,7 +42,7 @@ formal:
 vivado: $(TOP).bit
 
 $(TOP).bit: $(TOP).tcl $(SRC) $(TOP).vhd $(TOP).xdc
-	bash -c "source $(XILINX_DIR)/settings64.sh ; vivado -mode tcl -source $<"
+	bash -c "source $(XILINX_DIR)/settings64.sh ; vivado -mode batch -source $<"
 
 $(TOP).tcl: Makefile
 	echo "# This is a tcl command script for the Vivado tool chain" > $@
