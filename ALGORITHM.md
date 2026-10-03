@@ -5,7 +5,7 @@ implemented so that it runs at 190 MHz, and what limits the clock frequency.
 
 ## Rows and conflicts
 
-A row is a set of `k` of the `n` columns, so there are `B(n,k)` rows. They are
+A row is a set of `k` of the `n` columns, so there are `B(n,k)` possible rows. They are
 numbered in lexicographic order of their columns, so for `n = 9` and `k = 3`,
 row 0 is `{0,1,2}`, row 1 is `{0,1,3}`, and row 83 is `{6,7,8}`.
 
@@ -32,9 +32,9 @@ the number of rows with any one column, and `l_2` is the number of rows with any
 two columns, which the [early pruning](#early-pruning) uses. Parameters where
 every `l_i` is a whole number are called admissible. For example:
 
-* `(n, k, 1)` is admissible when `k` divides `n`.
-* `(n, 3, 2)` is admissible when `n` is 1 or 3 modulo 6.
-* `(n, 4, 3)` is admissible when `n` is 2 or 4 modulo 6.
+* `(1, k, n)` is admissible when `k` divides `n`.
+* `(2, 3, n)` is admissible when `n` is 1 or 3 modulo 6.
+* `(3, 4, n)` is admissible when `n` is 2 or 4 modulo 6.
 
 This is necessary, but not enough, for a Steiner system to exist. For example,
 `(2, 7, 43)` is admissible, with `b = 43` and `r = 7`, but there is no such
