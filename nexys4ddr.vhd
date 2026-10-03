@@ -36,7 +36,7 @@ architecture synthesis of nexys4ddr is
 
   signal steiner_valid : std_logic;
   signal steiner_ready : std_logic;
-  signal steiner_data  : std_logic_vector(0 to binom(C_N, C_T) / binom(C_K, C_T) * C_N - 1);
+  signal steiner_data  : std_logic_vector(0 to num_blocks(C_T, C_K, C_N) * C_N - 1);
   signal steiner_done  : std_logic;
 
   signal uart_tx_valid : std_logic;

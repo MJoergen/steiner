@@ -1,314 +1,314 @@
 vunit i_steiner(steiner(synthesis))
 {
-   type f_index_vec_t is array (natural range <>) of natural range 0 to C_NUM_ROWS-1;
+  type f_index_vec_t is array (natural range <>) of natural range 0 to C_NUM_ROWS-1;
 
-   -- The columns of the row placed at each depth, and the index of that row (or 0
-   -- if no row has these columns). If a row was placed in the previous clock
-   -- cycle, its entry in "positions" has not been written yet, so it is taken
-   -- from "placed_row" instead.
-   signal f_cols          : columns_vec_t(0 to C_B-1);
-   signal f_pos           : f_index_vec_t(0 to C_B-1);
+  -- The columns of the row placed at each depth, and the index of that row (or 0
+  -- if no row has these columns). If a row was placed in the previous clock
+  -- cycle, its entry in "positions" has not been written yet, so it is taken
+  -- from "placed_row" instead.
+  signal f_cols          : columns_vec_t(0 to C_B-1);
+  signal f_pos           : f_index_vec_t(0 to C_B-1);
 
-   -- The same for each row of the output solution
-   signal f_data_cols     : columns_vec_t(0 to C_B-1);
-   signal f_data_pos      : f_index_vec_t(0 to C_B-1);
+  -- The same for each row of the output solution
+  signal f_data_cols     : columns_vec_t(0 to C_B-1);
+  signal f_data_pos      : f_index_vec_t(0 to C_B-1);
 
-   -- The same for the stack: the rows left to try at each depth
-   signal f_stack         : rows_vec_t(0 to C_B-1);
+  -- The same for the stack: the rows left to try at each depth
+  signal f_stack         : rows_vec_t(0 to C_B-1);
 
-   -- The rows compatible with each placed row, and with each row of the output
-   -- solution. Since each "valid" instance only checks the rows from the
-   -- selected row and up, the rows are always checked against a lower row.
-   signal f_pos_sel       : rows_vec_t(0 to C_B-1);
-   signal f_pos_valid     : rows_vec_t(0 to C_B-1);
-   signal f_data_sel      : rows_vec_t(0 to C_B-1);
-   signal f_data_valid    : rows_vec_t(0 to C_B-1);
+  -- The rows compatible with each placed row, and with each row of the output
+  -- solution. Since each "valid" instance only checks the rows from the
+  -- selected row and up, the rows are always checked against a lower row.
+  signal f_pos_sel       : rows_vec_t(0 to C_B-1);
+  signal f_pos_valid     : rows_vec_t(0 to C_B-1);
+  signal f_data_sel      : rows_vec_t(0 to C_B-1);
+  signal f_data_valid    : rows_vec_t(0 to C_B-1);
 
-   -- The first row in "placed_cand", found without the segments used in the
-   -- design
-   signal f_placed_first  : rows_t;
+  -- The first row in "placed_cand", found without the segments used in the
+  -- design
+  signal f_placed_first  : rows_t;
 
-   -- Properties of the output solution, computed below.
-   signal f_data_in_range   : std_logic;
-   signal f_data_sorted     : std_logic;
-   signal f_data_compatible : std_logic;
+  -- Properties of the output solution, computed below.
+  signal f_data_in_range   : std_logic;
+  signal f_data_sorted     : std_logic;
+  signal f_data_compatible : std_logic;
 
-   -- Invariants of the search state, computed below.
-   signal f_depth_flags   : std_logic;
-   signal f_pos_in_range  : std_logic;
-   signal f_pos_sorted    : std_logic;
-   signal f_pos_compatible : std_logic;
-   signal f_pos_pruned    : std_logic;
-   signal f_cand_exact    : std_logic;
-   signal f_stack_exact   : std_logic;
+  -- Invariants of the search state, computed below.
+  signal f_depth_flags   : std_logic;
+  signal f_pos_in_range  : std_logic;
+  signal f_pos_sorted    : std_logic;
+  signal f_pos_compatible : std_logic;
+  signal f_pos_pruned    : std_logic;
+  signal f_cand_exact    : std_logic;
+  signal f_stack_exact   : std_logic;
 
-   -- No row has been tried yet at the current depth, i.e. the most recent step
-   -- was a reset or placing a row, rather than removing one
-   signal f_fresh         : std_logic;
-
-
-   -- set all declarations to run on clk_i
-   default clock is rising_edge(clk_i);
+  -- No row has been tried yet at the current depth, i.e. the most recent step
+  -- was a reset or placing a row, rather than removing one
+  signal f_fresh         : std_logic;
 
 
-   -----------------------------
-   -- ASSERTIONS ABOUT OUTPUTS
-   -----------------------------
-
-   -- Nothing is output right after reset
-   f_after_reset : assert always {rst_i} |=> {not m_valid_o and not done_o};
-
-   -- Output must be stable until accepted
-   f_output_stable : assert always {m_valid_o and not m_ready_i and not rst_i} |=> {stable(m_valid_o) and stable(m_data_o)};
-
-   -- Once the search is finished, it stays finished until the next reset
-   f_done_stable : assert always {done_o and not rst_i} |=> {done_o};
-
-   -- The search is only finished when the last solution has been accepted
-   f_done_not_valid : assert always {done_o and not rst_i} |-> {not m_valid_o};
+  -- set all declarations to run on clk_i
+  default clock is rising_edge(clk_i);
 
 
-   -- Each solution output is valid: a set of C_B rows, all different and in
-   -- increasing order, where every two rows are compatible. The rows are
-   -- checked with separate instances of the valid module.
-   f_data_gen : for i in 0 to C_B-1 generate
-      f_data_cols(i) <= m_data_o(i*G_N to i*G_N+G_N-1);
+  -----------------------------
+  -- ASSERTIONS ABOUT OUTPUTS
+  -----------------------------
 
-      f_data_sel_gen : for j in 0 to C_NUM_ROWS-1 generate
-         f_data_sel(i)(j) <= '1' when f_data_cols(i) = C_COLUMNS(j) else '0';
-      end generate f_data_sel_gen;
+  -- Nothing is output right after reset
+  f_after_reset : assert always {rst_i} |=> {not m_valid_o and not done_o};
 
-      f_valid_inst : entity work.valid
-         generic map (
-            G_N        => G_N,
-            G_K        => G_K,
-            G_T        => G_T,
-            G_NUM_ROWS => C_NUM_ROWS,
-            G_FIRST    => 0,
-            G_LAST     => C_NUM_ROWS-1
-         )
-         port map (
-            sel_i   => f_data_sel(i),
-            valid_o => f_data_valid(i)
-         );
-   end generate f_data_gen;
+  -- Output must be stable until accepted
+  f_output_stable : assert always {m_valid_o and not m_ready_i and not rst_i} |=> {stable(m_valid_o) and stable(m_data_o)};
 
-   -- The index of each row, found from its columns
-   p_index : process (all)
-   begin
-      for i in 0 to C_B-1 loop
-         f_pos(i)      <= 0;
-         f_data_pos(i) <= 0;
-         for j in 0 to C_NUM_ROWS-1 loop
-            if f_cols(i) = C_COLUMNS(j) then
-               f_pos(i) <= j;
-            end if;
-            if f_data_cols(i) = C_COLUMNS(j) then
-               f_data_pos(i) <= j;
-            end if;
-         end loop;
+  -- Once the search is finished, it stays finished until the next reset
+  f_done_stable : assert always {done_o and not rst_i} |=> {done_o};
+
+  -- The search is only finished when the last solution has been accepted
+  f_done_not_valid : assert always {done_o and not rst_i} |-> {not m_valid_o};
+
+
+  -- Each solution output is valid: a set of C_B rows, all different and in
+  -- increasing order, where every two rows are compatible. The rows are
+  -- checked with separate instances of the valid module.
+  f_data_gen : for i in 0 to C_B-1 generate
+    f_data_cols(i) <= m_data_o(i*G_N to i*G_N+G_N-1);
+
+    f_data_sel_gen : for j in 0 to C_NUM_ROWS-1 generate
+      f_data_sel(i)(j) <= '1' when f_data_cols(i) = C_COLUMNS(j) else '0';
+    end generate f_data_sel_gen;
+
+    f_valid_inst : entity work.valid
+      generic map (
+        G_N        => G_N,
+        G_K        => G_K,
+        G_T        => G_T,
+        G_NUM_ROWS => C_NUM_ROWS,
+        G_FIRST    => 0,
+        G_LAST     => C_NUM_ROWS-1
+      )
+      port map (
+        sel_i   => f_data_sel(i),
+        valid_o => f_data_valid(i)
+      );
+  end generate f_data_gen;
+
+  -- The index of each row, found from its columns
+  p_index : process (all)
+  begin
+    for i in 0 to C_B-1 loop
+      f_pos(i)      <= 0;
+      f_data_pos(i) <= 0;
+      for j in 0 to C_NUM_ROWS-1 loop
+        if f_cols(i) = C_COLUMNS(j) then
+          f_pos(i) <= j;
+        end if;
+        if f_data_cols(i) = C_COLUMNS(j) then
+          f_data_pos(i) <= j;
+        end if;
       end loop;
-   end process p_index;
+    end loop;
+  end process p_index;
 
-   p_data : process (all)
-   begin
-      f_data_in_range   <= '1';
-      f_data_sorted     <= '1';
-      f_data_compatible <= '1';
-      for i in 0 to C_B-1 loop
-         -- Every row has "k" columns, i.e. it is one of the rows
-         if f_data_cols(i) /= C_COLUMNS(f_data_pos(i)) then
-            f_data_in_range <= '0';
-         end if;
-         if i > 0 and f_data_pos(i-1) >= f_data_pos(i) then
-            f_data_sorted <= '0';
-         end if;
-         -- Check both ways, so this does not rely on the rows being sorted
-         for j in 0 to i-1 loop
-            if (f_data_valid(j) and f_data_sel(i)) /= f_data_sel(i) or
-               (f_data_valid(i) and f_data_sel(j)) /= f_data_sel(j) then
-               f_data_compatible <= '0';
-            end if;
-         end loop;
-      end loop;
-   end process p_data;
-
-   f_data_in_range_a   : assert always {m_valid_o and not rst_i} |-> {f_data_in_range};
-   f_data_sorted_a     : assert always {m_valid_o and not rst_i} |-> {f_data_sorted};
-   f_data_compatible_a : assert always {m_valid_o and not rst_i} |-> {f_data_compatible};
-
-
-   -----------------------------
-   -- ASSERTIONS ABOUT INTERNAL STATE
-   -----------------------------
-
-   p_pos : process (all)
-   begin
-      for i in 0 to C_B-1 loop
-         f_cols(i)  <= positions(i);
-         f_stack(i) <= stack(i);
-         if placed = '1' and placed_depth = i then
-            f_cols(i)  <= columns_of(placed_row);
-            f_stack(i) <= placed_rest;
-         end if;
-      end loop;
-   end process p_pos;
-
-   f_pos_gen : for i in 0 to C_B-1 generate
-      f_pos_sel_gen : for j in 0 to C_NUM_ROWS-1 generate
-         f_pos_sel(i)(j) <= '1' when i < depth and f_pos(i) = j else '0';
-      end generate f_pos_sel_gen;
-
-      f_valid_inst : entity work.valid
-         generic map (
-            G_N        => G_N,
-            G_K        => G_K,
-            G_T        => G_T,
-            G_NUM_ROWS => C_NUM_ROWS,
-            G_FIRST    => 0,
-            G_LAST     => C_NUM_ROWS-1
-         )
-         port map (
-            sel_i   => f_pos_sel(i),
-            valid_o => f_pos_valid(i)
-         );
-   end generate f_pos_gen;
-
-   f_placed_first <= placed_cand and std_logic_vector(unsigned(not placed_cand) + 1);
-
-   -- This follows the decisions in main_proc in steiner.vhd: a place sets
-   -- "f_fresh", and removing a row clears it
-   p_fresh : process (clk_i)
-   begin
-      if rising_edge(clk_i) then
-         if full = '1' then
-            if m_valid_o = '0' or m_ready_i = '1' then
-               f_fresh <= '0';
-            end if;
-         elsif place = '1' then
-            f_fresh <= '1';
-         elsif empty = '0' then
-            f_fresh <= '0';
-         end if;
-         if rst_i = '1' then
-            f_fresh <= '1';
-         end if;
+  p_data : process (all)
+  begin
+    f_data_in_range   <= '1';
+    f_data_sorted     <= '1';
+    f_data_compatible <= '1';
+    for i in 0 to C_B-1 loop
+      -- Every row has "k" columns, i.e. it is one of the rows
+      if f_data_cols(i) /= C_COLUMNS(f_data_pos(i)) then
+        f_data_in_range <= '0';
       end if;
-   end process p_fresh;
-
-   p_invariants : process (all)
-      -- The rows that come after row "x"
-      pure function rows_after(x : natural) return rows_t is
-         variable res : rows_t;
-      begin
-         for j in 0 to C_NUM_ROWS-1 loop
-            if j > x then res(j) := '1'; else res(j) := '0'; end if;
-         end loop;
-         return res;
-      end function rows_after;
-
-      variable fit : rows_t;
-   begin
-      -- The registers derived from "depth" match it
-      f_depth_flags <= '1';
-      if depth > C_B or
-         depth_m1 /= maximum(depth, 1) - 1 or
-         (empty  = '1') /= (depth = 0) or
-         (full   = '1') /= (depth = C_B) or
-         (allow1 = '1') /= (depth >= C_R) or
-         (allow2 = '1') /= (depth >= 2*C_R-C_L2) then
-         f_depth_flags <= '0';
+      if i > 0 and f_data_pos(i-1) >= f_data_pos(i) then
+        f_data_sorted <= '0';
       end if;
-
-      f_pos_in_range   <= '1';
-      f_pos_sorted     <= '1';
-      f_pos_compatible <= '1';
-      f_pos_pruned     <= '1';
-      f_stack_exact    <= '1';
-
-      -- The rows compatible with every row placed so far
-      fit := (others => '1');
-
-      for i in 0 to C_B-1 loop
-         if i < depth then
-            -- Every placed row has "k" columns, i.e. it is one of the rows
-            if f_cols(i) /= C_COLUMNS(f_pos(i)) then
-               f_pos_in_range <= '0';
-            end if;
-            -- The rows are placed in strictly increasing order
-            if i > 0 and f_pos(i-1) >= f_pos(i) then
-               f_pos_sorted <= '0';
-            end if;
-            -- Every row is compatible with all the rows placed before it
-            if fit(f_pos(i)) = '0' then
-               f_pos_compatible <= '0';
-            end if;
-            -- The early pruning rules are followed
-            if (i < C_R and f_pos(i) >= C_SEG1) or
-               (i < 2*C_R-C_L2 and f_pos(i) >= C_SEG2) then
-               f_pos_pruned <= '0';
-            end if;
-            -- The rows left to try in place of row "i" are exactly the rows after
-            -- it that are compatible with all the rows placed before it. So no
-            -- rows are lost.
-            if f_stack(i) /= (fit and rows_after(f_pos(i))) then
-               f_stack_exact <= '0';
-            end if;
-
-            fit := fit and f_pos_valid(i);
-         end if;
+      -- Check both ways, so this does not rely on the rows being sorted
+      for j in 0 to i-1 loop
+        if (f_data_valid(j) and f_data_sel(i)) /= f_data_sel(i) or
+          (f_data_valid(i) and f_data_sel(j)) /= f_data_sel(j) then
+          f_data_compatible <= '0';
+        end if;
       end loop;
+    end loop;
+  end process p_data;
 
-      -- Likewise, the candidates are exactly the rows compatible with every placed
-      -- row that come after the most recently tried row. That is the row placed
-      -- before, or the row just removed at this depth, which is still in
-      -- "positions".
-      if f_fresh = '0' and depth < C_B then
-         fit := fit and rows_after(f_pos(depth));
-      elsif depth > 0 and depth <= C_B then
-         fit := fit and rows_after(f_pos(depth-1));
+  f_data_in_range_a   : assert always {m_valid_o and not rst_i} |-> {f_data_in_range};
+  f_data_sorted_a     : assert always {m_valid_o and not rst_i} |-> {f_data_sorted};
+  f_data_compatible_a : assert always {m_valid_o and not rst_i} |-> {f_data_compatible};
+
+
+  -----------------------------
+  -- ASSERTIONS ABOUT INTERNAL STATE
+  -----------------------------
+
+  p_pos : process (all)
+  begin
+    for i in 0 to C_B-1 loop
+      f_cols(i)  <= positions(i);
+      f_stack(i) <= stack(i);
+      if placed = '1' and placed_depth = i then
+        f_cols(i)  <= columns_of(placed_row);
+        f_stack(i) <= placed_rest;
       end if;
-      if cand = fit then f_cand_exact <= '1'; else f_cand_exact <= '0'; end if;
-   end process p_invariants;
+    end loop;
+  end process p_pos;
 
-   -- These are written as "{not rst_i} |-> {...}" rather than "{...} abort rst_i",
-   -- because GHDL does not mask a single-cycle check with abort, and the
-   -- registers are undefined during the first (reset) cycle.
-   f_depth_flags_a      : assert always {not rst_i} |-> {f_depth_flags};
-   f_pos_in_range_a     : assert always {not rst_i} |-> {f_pos_in_range};
-   f_pos_sorted_a       : assert always {not rst_i} |-> {f_pos_sorted};
-   f_pos_compatible_a   : assert always {not rst_i} |-> {f_pos_compatible};
-   f_pos_pruned_a       : assert always {not rst_i} |-> {f_pos_pruned};
-   f_fresh_a            : assert always {not f_fresh and not rst_i} |-> {depth < C_B};
-   f_cand_exact_a       : assert always {not rst_i} |-> {f_cand_exact};
-   f_stack_exact_a      : assert always {not rst_i} |-> {f_stack_exact};
+  f_pos_gen : for i in 0 to C_B-1 generate
+    f_pos_sel_gen : for j in 0 to C_NUM_ROWS-1 generate
+      f_pos_sel(i)(j) <= '1' when i < depth and f_pos(i) = j else '0';
+    end generate f_pos_sel_gen;
 
-   -- A row was placed in the previous clock cycle, and it is the first row of
-   -- the candidates at that time
-   f_placed_a : assert always {placed and not rst_i} |->
-      {depth > 0 and placed_depth = depth-1 and placed_row = f_placed_first and
-       placed_cand /= (C_NUM_ROWS-1 downto 0 => '0')};
+    f_valid_inst : entity work.valid
+      generic map (
+        G_N        => G_N,
+        G_K        => G_K,
+        G_T        => G_T,
+        G_NUM_ROWS => C_NUM_ROWS,
+        G_FIRST    => 0,
+        G_LAST     => C_NUM_ROWS-1
+      )
+      port map (
+        sel_i   => f_pos_sel(i),
+        valid_o => f_pos_valid(i)
+      );
+  end generate f_pos_gen;
 
-   -- When the search is finished, nothing is placed
-   f_done_idle : assert always {done_o and not rst_i} |-> {empty and not placed};
+  f_placed_first <= placed_cand and std_logic_vector(unsigned(not placed_cand) + 1);
+
+  -- This follows the decisions in main_proc in steiner.vhd: a place sets
+  -- "f_fresh", and removing a row clears it
+  p_fresh : process (clk_i)
+  begin
+    if rising_edge(clk_i) then
+      if full = '1' then
+        if m_valid_o = '0' or m_ready_i = '1' then
+          f_fresh <= '0';
+        end if;
+      elsif place = '1' then
+        f_fresh <= '1';
+      elsif empty = '0' then
+        f_fresh <= '0';
+      end if;
+      if rst_i = '1' then
+        f_fresh <= '1';
+      end if;
+    end if;
+  end process p_fresh;
+
+  p_invariants : process (all)
+    -- The rows that come after row "x"
+    pure function rows_after(x : natural) return rows_t is
+      variable res : rows_t;
+    begin
+      for j in 0 to C_NUM_ROWS-1 loop
+        if j > x then res(j) := '1'; else res(j) := '0'; end if;
+      end loop;
+      return res;
+    end function rows_after;
+
+    variable fit : rows_t;
+  begin
+    -- The registers derived from "depth" match it
+    f_depth_flags <= '1';
+    if depth > C_B or
+      depth_m1 /= maximum(depth, 1) - 1 or
+      (empty  = '1') /= (depth = 0) or
+      (full   = '1') /= (depth = C_B) or
+      (allow1 = '1') /= (depth >= C_R) or
+      (allow2 = '1') /= (depth >= 2*C_R-C_L2) then
+      f_depth_flags <= '0';
+    end if;
+
+    f_pos_in_range   <= '1';
+    f_pos_sorted     <= '1';
+    f_pos_compatible <= '1';
+    f_pos_pruned     <= '1';
+    f_stack_exact    <= '1';
+
+    -- The rows compatible with every row placed so far
+    fit := (others => '1');
+
+    for i in 0 to C_B-1 loop
+      if i < depth then
+        -- Every placed row has "k" columns, i.e. it is one of the rows
+        if f_cols(i) /= C_COLUMNS(f_pos(i)) then
+          f_pos_in_range <= '0';
+        end if;
+        -- The rows are placed in strictly increasing order
+        if i > 0 and f_pos(i-1) >= f_pos(i) then
+          f_pos_sorted <= '0';
+        end if;
+        -- Every row is compatible with all the rows placed before it
+        if fit(f_pos(i)) = '0' then
+          f_pos_compatible <= '0';
+        end if;
+        -- The early pruning rules are followed
+        if (i < C_R and f_pos(i) >= C_SEG1) or
+          (i < 2*C_R-C_L2 and f_pos(i) >= C_SEG2) then
+          f_pos_pruned <= '0';
+        end if;
+        -- The rows left to try in place of row "i" are exactly the rows after
+        -- it that are compatible with all the rows placed before it. So no
+        -- rows are lost.
+        if f_stack(i) /= (fit and rows_after(f_pos(i))) then
+          f_stack_exact <= '0';
+        end if;
+
+        fit := fit and f_pos_valid(i);
+      end if;
+    end loop;
+
+    -- Likewise, the candidates are exactly the rows compatible with every placed
+    -- row that come after the most recently tried row. That is the row placed
+    -- before, or the row just removed at this depth, which is still in
+    -- "positions".
+    if f_fresh = '0' and depth < C_B then
+      fit := fit and rows_after(f_pos(depth));
+    elsif depth > 0 and depth <= C_B then
+      fit := fit and rows_after(f_pos(depth-1));
+    end if;
+    if cand = fit then f_cand_exact <= '1'; else f_cand_exact <= '0'; end if;
+  end process p_invariants;
+
+  -- These are written as "{not rst_i} |-> {...}" rather than "{...} abort rst_i",
+  -- because GHDL does not mask a single-cycle check with abort, and the
+  -- registers are undefined during the first (reset) cycle.
+  f_depth_flags_a      : assert always {not rst_i} |-> {f_depth_flags};
+  f_pos_in_range_a     : assert always {not rst_i} |-> {f_pos_in_range};
+  f_pos_sorted_a       : assert always {not rst_i} |-> {f_pos_sorted};
+  f_pos_compatible_a   : assert always {not rst_i} |-> {f_pos_compatible};
+  f_pos_pruned_a       : assert always {not rst_i} |-> {f_pos_pruned};
+  f_fresh_a            : assert always {not f_fresh and not rst_i} |-> {depth < C_B};
+  f_cand_exact_a       : assert always {not rst_i} |-> {f_cand_exact};
+  f_stack_exact_a      : assert always {not rst_i} |-> {f_stack_exact};
+
+  -- A row was placed in the previous clock cycle, and it is the first row of
+  -- the candidates at that time
+  f_placed_a : assert always {placed and not rst_i} |->
+    {depth > 0 and placed_depth = depth-1 and placed_row = f_placed_first and
+     placed_cand /= (C_NUM_ROWS-1 downto 0 => '0')};
+
+  -- When the search is finished, nothing is placed
+  f_done_idle : assert always {done_o and not rst_i} |-> {empty and not placed};
 
 
-   -----------------------------
-   -- ASSUMPTIONS ABOUT INPUTS
-   -----------------------------
+  -----------------------------
+  -- ASSUMPTIONS ABOUT INPUTS
+  -----------------------------
 
-   -- Require reset at startup.
-   f_reset : assume {rst_i};
+  -- Require reset at startup.
+  f_reset : assume {rst_i};
 
 
-   --------------------------------------------
-   -- COVER STATEMENTS TO VERIFY REACHABILITY
-   --------------------------------------------
+  --------------------------------------------
+  -- COVER STATEMENTS TO VERIFY REACHABILITY
+  --------------------------------------------
 
-   -- A solution is found and accepted
-   f_solution : cover {m_valid_o and m_ready_i and not rst_i};
+  -- A solution is found and accepted
+  f_solution : cover {m_valid_o and m_ready_i and not rst_i};
 
-   -- The whole search finishes
-   f_done : cover {done_o and not rst_i};
+  -- The whole search finishes
+  f_done : cover {done_o and not rst_i};
 
 } -- vunit i_steiner(steiner(synthesis))

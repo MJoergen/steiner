@@ -41,7 +41,7 @@ entity steiner2uart is
     -- The solutions from steiner.vhd
     s_valid_i : in  std_logic;
     s_ready_o : out std_logic;
-    s_data_i  : in  std_logic_vector(0 to binom(G_N, G_T) / binom(G_K, G_T) * G_N - 1);
+    s_data_i  : in  std_logic_vector(0 to num_blocks(G_T, G_K, G_N) * G_N - 1);
     -- One ASCII character at a time
     m_valid_o : out std_logic;
     m_ready_i : in  std_logic;
@@ -56,7 +56,7 @@ end entity steiner2uart;
 architecture synthesis of steiner2uart is
 
   constant C_NUM_ROWS : natural := binom(G_N, G_K);
-  constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
+  constant C_B        : natural := num_blocks(G_T, G_K, G_N);
 
   -- The number of decimal digits in the largest row index
   pure function calc_digits return natural is
@@ -151,11 +151,12 @@ architecture synthesis of steiner2uart is
   end function summary_init;
 
   -- The number of rows that have column "j", and the same columns before "j" as a
-  -- row that has "i" columns before "j", but not "j" itself
+  -- row that has "i" columns before "j", but not "j" itself. Once all "k" columns
+  -- have been seen, no rows are left, so the weight for i = k stays 0.
   type weights_t is array (natural range <>, natural range <>) of natural;
 
   pure function weights_init return weights_t is
-    variable res : weights_t(0 to G_N-1, 0 to G_N) := (others => (others => 0));
+    variable res : weights_t(0 to G_N-1, 0 to G_K) := (others => (others => 0));
   begin
     for j in 0 to G_N-1 loop
       for i in 0 to G_K-1 loop
@@ -165,7 +166,7 @@ architecture synthesis of steiner2uart is
     return res;
   end function weights_init;
 
-  constant C_WEIGHTS : weights_t(0 to G_N-1, 0 to G_N) := weights_init;
+  constant C_WEIGHTS : weights_t(0 to G_N-1, 0 to G_K) := weights_init;
 
   type powers_t is array (natural range <>) of natural;
 
@@ -199,7 +200,7 @@ architecture synthesis of steiner2uart is
   -- it, and row C_B+1 is the last line, with the number of solutions
   signal row    : natural range 0 to C_B+1;
   signal column : natural range 0 to G_N-1;
-  signal ones   : natural range 0 to G_N;
+  signal ones   : natural range 0 to G_K;
   signal index  : natural range 0 to C_NUM_ROWS-1;
   signal pos    : natural range 0 to C_DIGITS-1;
   signal digit  : natural range 0 to 9;

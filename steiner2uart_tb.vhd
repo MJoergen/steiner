@@ -28,7 +28,7 @@ end entity steiner2uart_tb;
 
 architecture simulation of steiner2uart_tb is
 
-  constant C_B : natural := binom(G_N, G_T) / binom(G_K, G_T);
+  constant C_B : natural := num_blocks(G_T, G_K, G_N);
 
   signal clk           : std_logic := '0';
   signal rst           : std_logic := '1';

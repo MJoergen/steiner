@@ -56,7 +56,7 @@ entity steiner is
     m_valid_o : out std_logic := '0';
     m_ready_i : in  std_logic;
     -- One solution: b rows of n bits each, see above
-    m_data_o  : out std_logic_vector(0 to binom(G_N, G_T) / binom(G_K, G_T) * G_N - 1);
+    m_data_o  : out std_logic_vector(0 to num_blocks(G_T, G_K, G_N) * G_N - 1);
     -- The search is finished and the last solution has been accepted
     done_o    : out std_logic := '0'
   );
@@ -88,7 +88,7 @@ architecture synthesis of steiner is
   constant C_PARAMETERS_OK : boolean := check_parameters;
 
   constant C_NUM_ROWS : natural := binom(G_N, G_K);
-  constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
+  constant C_B        : natural := num_blocks(G_T, G_K, G_N);
   constant C_R        : natural := binom(G_N-1, G_T-1) / binom(G_K-1, G_T-1);
 
   -- Number of rows that contain both column 0 and column 1. This is only defined
@@ -121,27 +121,12 @@ architecture synthesis of steiner is
   subtype columns_t is std_logic_vector(0 to G_N-1);
   type columns_vec_t is array (natural range <>) of columns_t;
 
-  -- The columns of each row. Rows are numbered in lexicographic order of their
-  -- columns, so row "i" is found one column at a time: column "j" is in the row
-  -- if "i" is less than the number of rows that have it, given the columns before.
+  -- The columns of each row, numbered in lexicographic order of their columns
   pure function columns_init return columns_vec_t is
     variable res : columns_vec_t(0 to C_NUM_ROWS-1);
-    variable kk  : natural;
-    variable ii  : natural;
   begin
     for i in res'range loop
-      res(i) := (others => '0');
-      kk     := G_K;
-      ii     := i;
-      for j in 0 to G_N-1 loop
-        exit when kk = 0;
-        if ii < binom(G_N-j-1, kk-1) then
-          res(i)(j) := '1';
-          kk        := kk - 1;
-        else
-          ii        := ii - binom(G_N-j-1, kk-1);
-        end if;
-      end loop;
+      res(i) := row_columns(i, G_K, G_N);
     end loop;
     return res;
   end function columns_init;

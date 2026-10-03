@@ -47,30 +47,13 @@ sim:
 	ghdl -r --std=08 $(TB) -gG_T=$(T) -gG_K=$(K) -gG_N=$(N) \
 		--assert-level=error --wave=$(TB).ghw
 
-# The solutions must be exactly those of the reference model, in the same order,
-# and those in the results file, if there is one. The text from steiner2uart.vhd
-# must be exactly that of the reference model.
+# Compares each parameter set in CHECK with steiner_ref.py, see check.sh
 check:
 	ghdl -a --std=08 $(SRC) $(TB).vhd $(TEXT_TB).vhd
 	ghdl -e --std=08 $(TB)
 	ghdl -e --std=08 $(TEXT_TB)
 	@for p in $(CHECK); do \
-	  set -- $$(echo $$p | tr _ ' '); \
-	  echo "Checking (t, k, n) = ($$1, $$2, $$3)"; \
-	  ghdl -r --std=08 $(TB) -gG_T=$$1 -gG_K=$$2 -gG_N=$$3 -gG_OUTPUT=check_$$p.txt \
-	    --assert-level=error > check_$$p.log 2>&1 || { tail -5 check_$$p.log; exit 1; }; \
-	  python3 steiner_ref.py $$1 $$2 $$3 > check_$$p.ref; \
-	  diff check_$$p.txt check_$$p.ref > /dev/null || \
-	    { echo "The solutions differ from steiner_ref.py"; exit 1; }; \
-	  if [ -f result_$$p.txt ]; then \
-	    diff check_$$p.txt result_$$p.txt > /dev/null || \
-	      { echo "The solutions differ from result_$$p.txt"; exit 1; }; \
-	  fi; \
-	  ghdl -r --std=08 $(TEXT_TB) -gG_T=$$1 -gG_K=$$2 -gG_N=$$3 -gG_OUTPUT=check_text_$$p.txt \
-	    --assert-level=error > check_text_$$p.log 2>&1 || { tail -5 check_text_$$p.log; exit 1; }; \
-	  python3 steiner_ref.py --text $$1 $$2 $$3 > check_text_$$p.ref; \
-	  diff check_text_$$p.txt check_text_$$p.ref > /dev/null || \
-	    { echo "The text from steiner2uart.vhd differs from steiner_ref.py"; exit 1; }; \
+	  ./check.sh $$(echo $$p | tr _ ' ') || exit 1; \
 	done
 	@echo "All solutions and texts match steiner_ref.py"
 

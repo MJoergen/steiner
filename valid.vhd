@@ -32,52 +32,25 @@ end entity valid;
 
 architecture synthesis of valid is
 
-  -- Count number of 1's in a vector
-  pure function count_ones(arg : std_logic_vector) return natural is
-    variable res : natural := 0;
-  begin
-    for i in arg'low to arg'high loop
-      if arg(i) = '1' then
-        res := res + 1;
-      end if;
-    end loop;
-    return res;
-  end function count_ones;
-
   -- Each row has length "n".
-  type ram_t is array (natural range <>) of std_logic_vector(G_N-1 downto 0);
+  type ram_t is array (natural range <>) of std_logic_vector(0 to G_N-1);
 
-  -- This calculates an array of all possible combinations of N choose K, i.e. all
-  -- the rows, numbered in lexicographic order of their columns. Bit "j" of a row is
-  -- column "j".
-  pure function combination_init(n : natural; k : natural) return ram_t is
-    variable res : ram_t(G_NUM_ROWS-1 downto 0) := (others => (others => '0'));
-    variable kk  : natural := k;
-    variable ii  : natural := 0;
+  -- All the rows, numbered in lexicographic order of their columns, with column 0
+  -- first.
+  pure function combination_init return ram_t is
+    variable res : ram_t(G_NUM_ROWS-1 downto 0);
   begin
-    loop_i : for i in 0 to G_NUM_ROWS-1 loop
-      kk := k;
-      ii := i;
-      loop_j : for j in 0 to G_N-1 loop
-        if kk = 0 then
-          exit loop_j;
-        end if;
-        if ii < binom(n-j-1, kk-1) then
-          res(i)(j) := '1';
-          kk := kk - 1;
-        else
-          ii := ii - binom(n-j-1, kk-1);
-        end if;
-      end loop loop_j;
+    for i in 0 to G_NUM_ROWS-1 loop
+      res(i) := row_columns(i, G_K, G_N);
       assert count_ones(res(i)) = G_K
         report "Row " & to_string(i) & " doesn't have " & to_string(G_K) & " ones"
         severity failure;
-    end loop loop_i;
+    end loop;
     return res;
   end function combination_init;
 
   -- Each row contains exactly "k" ones.
-  constant C_COMBINATIONS : ram_t(G_NUM_ROWS-1 downto 0) := combination_init(G_N, G_K);
+  constant C_COMBINATIONS : ram_t(G_NUM_ROWS-1 downto 0) := combination_init;
 
   -- Each pair of rows and'ed together contain less than "t" ones. Entry "j" in this
   -- table shows the rows that conflict with row "j", meaning they break this rule.

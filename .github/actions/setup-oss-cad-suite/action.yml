@@ -1,0 +1,22 @@
+name: Install the OSS CAD Suite
+description: >
+  Installs SymbiYosys, Yosys with the GHDL plugin, GHDL itself, and the SMT solvers
+  from one YosysHQ tarball, and adds them to the PATH. The date is pinned rather than
+  tracking "latest", so that an upstream nightly cannot turn a job red on its own;
+  bump it deliberately. It is shared by the sim and formal workflows, so both use the
+  same tool versions.
+
+runs:
+  using: composite
+  steps:
+    - name: Install the OSS CAD Suite
+      shell: bash
+      env:
+        OSS_CAD_SUITE_DATE: "2026-08-24"
+      run: |
+        d="$OSS_CAD_SUITE_DATE"
+        curl -sSL -o oss-cad-suite.tgz \
+          "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/$d/oss-cad-suite-linux-x64-${d//-/}.tgz"
+        tar xzf oss-cad-suite.tgz
+        rm oss-cad-suite.tgz
+        echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
