@@ -3,8 +3,9 @@
 -- G_OUTPUT. It stalls the characters at random, so the search has to wait for
 -- steiner2uart.vhd. "make check" compares G_OUTPUT with "steiner_ref.py --text".
 --
--- It fails if a character changes while it is waiting to be accepted, or if the
--- text isn't finished after G_TIMEOUT. GHDL can't set G_TIMEOUT from the command
+-- It fails if a character changes while it is waiting to be accepted, if count_o
+-- isn't the number of solutions accepted so far, or if the text isn't finished
+-- after G_TIMEOUT. GHDL can't set G_TIMEOUT from the command
 -- line, since it is a time. To change it, edit its default value below.
 
 library ieee;
@@ -41,6 +42,7 @@ architecture simulation of steiner2uart_tb is
   signal char_ready    : std_logic := '0';
   signal char_data     : std_logic_vector(7 downto 0);
   signal text_done     : std_logic;
+  signal count         : std_logic_vector(4 * C_COUNT_DIGITS - 1 downto 0);
 
 begin
 
@@ -78,7 +80,8 @@ begin
       m_ready_i => char_ready,
       m_data_o  => char_data,
       done_i    => done,
-      done_o    => text_done
+      done_o    => text_done,
+      count_o   => count
     ); -- steiner2uart_inst
 
   -- Accept each character with a probability of 30 %
@@ -128,6 +131,29 @@ begin
       prev    := char_data;
     end if;
   end process handshake_proc;
+
+  -- count_o is the number of solutions accepted so far, in BCD
+  count_proc : process (clk)
+    variable solutions : natural := 0;
+    variable val       : natural;
+    variable expected  : std_logic_vector(count'range);
+  begin
+    if rising_edge(clk) then
+      if rst = '0' then
+        val := solutions;
+        for d in 0 to C_COUNT_DIGITS-1 loop
+          expected(4*d+3 downto 4*d) := std_logic_vector(to_unsigned(val mod 10, 4));
+          val                        := val / 10;
+        end loop;
+        assert count = expected
+          report "count_o isn't the number of solutions, " & integer'image(solutions)
+          severity failure;
+        if steiner_valid = '1' and steiner_ready = '1' then
+          solutions := solutions + 1;
+        end if;
+      end if;
+    end if;
+  end process count_proc;
 
   -- The text is finished when steiner2uart.vhd has sent the number of solutions
   finish_proc : process
