@@ -75,27 +75,27 @@ the clock frequency.
 
 ## Files
 
-| File                                       | Description                                              |
-|--------------------------------------------|----------------------------------------------------------|
-| [`steiner.vhd`](steiner.vhd)               | The search.                                              |
-| [`valid.vhd`](valid.vhd)                   | The rows that don't conflict with a given row.           |
-| [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Binomial coefficient, number of rows, and the columns of a row. |
-| [`steiner2uart.vhd`](steiner2uart.vhd)     | Converts each solution to text, see [Synthesis](#synthesis). |
-| [`uart.vhd`](uart.vhd)                     | UART that sends the text.                                |
-| [`steiner2uart_tb.vhd`](steiner2uart_tb.vhd) | Testbench for `steiner2uart.vhd`, see [Simulation](#simulation). |
-| [`uart_tb.vhd`](uart_tb.vhd)               | Testbench for `uart.vhd`, run by `make uart`.            |
-| [`steiner_tb.vhd`](steiner_tb.vhd)         | Testbench, see [Simulation](#simulation).                |
-| [`steiner_tb.gtkw`](steiner_tb.gtkw)       | GTKWave setup for viewing the waveform from `make sim`.  |
-| [`check.sh`](check.sh)                     | Compares one parameter set with the reference model, run by `make check`. |
-| [`steiner_ref.py`](steiner_ref.py)         | Reference model in Python, see [Simulation](#simulation). |
-| [`formal/`](formal)                        | Formal verification, see [Formal verification](#formal-verification). |
-| [`nexys4ddr.vhd`](nexys4ddr.vhd), [`nexys4ddr.xdc`](nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |
-| [`clk_rst.vhd`](clk_rst.vhd)               | Clock and reset for the Nexys 4 DDR board.               |
-| `result_*.txt`                             | All solutions for the parameters in the file name.       |
-| [`ALGORITHM.md`](ALGORITHM.md)             | Detailed explanation of the algorithm and its timing.    |
-| [`Makefile`](Makefile)                     | Runs the simulation, the formal verification, and the synthesis, see [Running](#running). |
-| [`.github/workflows/`](.github/workflows)  | The CI, see [Running](#running).                         |
-| [`LICENSE`](LICENSE)                       | The MIT license.                                         |
+| File                                         | Description                                              |
+|----------------------------------------------|----------------------------------------------------------|
+| [`src/steiner.vhd`](src/steiner.vhd)         | The search.                                              |
+| [`src/valid.vhd`](src/valid.vhd)             | The rows that don't conflict with a given row.           |
+| [`src/steiner_pkg.vhd`](src/steiner_pkg.vhd) | Binomial coefficient, number of rows, and the columns of a row. |
+| [`src/steiner2uart.vhd`](src/steiner2uart.vhd) | Converts each solution to text, see [Synthesis](#synthesis). |
+| [`src/uart.vhd`](src/uart.vhd)               | UART that sends the text.                                |
+| [`src/nexys4ddr.vhd`](src/nexys4ddr.vhd), [`src/nexys4ddr.xdc`](src/nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |
+| [`src/clk_rst.vhd`](src/clk_rst.vhd)         | Clock and reset for the Nexys 4 DDR board.               |
+| [`sim/steiner_tb.vhd`](sim/steiner_tb.vhd)   | Testbench, see [Simulation](#simulation).                |
+| [`sim/steiner2uart_tb.vhd`](sim/steiner2uart_tb.vhd) | Testbench for `steiner2uart.vhd`, see [Simulation](#simulation). |
+| [`sim/uart_tb.vhd`](sim/uart_tb.vhd)         | Testbench for `uart.vhd`, run by `make uart`.            |
+| [`sim/steiner_tb.gtkw`](sim/steiner_tb.gtkw) | GTKWave setup for viewing the waveform from `make sim`.  |
+| [`sim/check.sh`](sim/check.sh)               | Compares one parameter set with the reference model, run by `make check`. |
+| [`steiner_ref.py`](steiner_ref.py)           | Reference model in Python, see [Simulation](#simulation). |
+| [`formal/`](formal)                          | Formal verification, see [Formal verification](#formal-verification). |
+| `result_*.txt`                               | All solutions for the parameters in the file name.       |
+| [`ALGORITHM.md`](ALGORITHM.md)               | Detailed explanation of the algorithm and its timing.    |
+| [`Makefile`](Makefile)                       | Runs the simulation, the formal verification, and the synthesis, see [Running](#running). |
+| [`.github/workflows/`](.github/workflows)    | The CI, see [Running](#running).                         |
+| [`LICENSE`](LICENSE)                         | The MIT license.                                         |
 
 ## Interface
 
@@ -181,7 +181,7 @@ holds every admissible parameter set with `n <= 10`, except `(3, 4, 10)`, which 
 over an hour to simulate. (It has 2520 solutions, and they match too.)
 
 For each parameter set, `make check` also runs
-[`steiner2uart_tb.vhd`](steiner2uart_tb.vhd), which converts every solution to text
+[`sim/steiner2uart_tb.vhd`](sim/steiner2uart_tb.vhd), which converts every solution to text
 with `steiner2uart.vhd`, and compares the text with that of
 `steiner_ref.py --text`. It accepts the characters at random, so the search has to
 wait, and fails if a character changes while it is waiting to be accepted.

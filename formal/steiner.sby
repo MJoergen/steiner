@@ -49,6 +49,6 @@ memory_map -rom-only
 
 [files]
 steiner.psl
-../steiner_pkg.vhd
-../valid.vhd
-../steiner.vhd
+../src/steiner_pkg.vhd
+../src/valid.vhd
+../src/steiner.vhd

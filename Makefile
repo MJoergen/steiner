@@ -1,13 +1,15 @@
 XILINX_DIR = /opt/Xilinx/2025.1/Vivado
-SRC  = steiner_pkg.vhd
-SRC += valid.vhd
-SRC += steiner.vhd
-SRC += steiner2uart.vhd
-SRC += uart.vhd
+# src/ holds the sources of the bitstream, sim/ the testbenches. Everything is built
+# in this directory.
+SRC  = src/steiner_pkg.vhd
+SRC += src/valid.vhd
+SRC += src/steiner.vhd
+SRC += src/steiner2uart.vhd
+SRC += src/uart.vhd
 TOP = nexys4ddr
 
 # Sources that are only synthesized, because they use Xilinx primitives
-BOARD_SRC = clk_rst.vhd
+BOARD_SRC = src/clk_rst.vhd
 
 TB = steiner_tb
 TEXT_TB = steiner2uart_tb
@@ -42,30 +44,30 @@ help:
 	@echo "  make clean       Remove the generated files"
 
 sim:
-	ghdl -a --std=08 $(SRC) $(TB).vhd
+	ghdl -a --std=08 $(SRC) sim/$(TB).vhd
 	ghdl -e --std=08 $(TB)
 	ghdl -r --std=08 $(TB) -gG_T=$(T) -gG_K=$(K) -gG_N=$(N) \
 		--assert-level=error --wave=$(TB).ghw
 
-# Compares each parameter set in CHECK with steiner_ref.py, see check.sh
+# Compares each parameter set in CHECK with steiner_ref.py, see sim/check.sh
 check:
-	ghdl -a --std=08 $(SRC) $(TB).vhd $(TEXT_TB).vhd
+	ghdl -a --std=08 $(SRC) sim/$(TB).vhd sim/$(TEXT_TB).vhd
 	ghdl -e --std=08 $(TB)
 	ghdl -e --std=08 $(TEXT_TB)
 	@for p in $(CHECK); do \
-	  ./check.sh $$(echo $$p | tr _ ' ') || exit 1; \
+	  sim/check.sh $$(echo $$p | tr _ ' ') || exit 1; \
 	done
 	@echo "All solutions and texts match steiner_ref.py"
 
 uart:
-	ghdl -a --std=08 uart.vhd uart_tb.vhd
+	ghdl -a --std=08 src/uart.vhd sim/uart_tb.vhd
 	ghdl -e --std=08 uart_tb
 	@for g in $(UART_DIVISORS); do \
 	  ghdl -r --std=08 uart_tb -gG_DIVISOR=$$g --assert-level=error || exit 1; \
 	done
 
 show:
-	gtkwave $(TB).ghw $(TB).gtkw
+	gtkwave $(TB).ghw sim/$(TB).gtkw
 
 formal:
 	$(MAKE) -C formal
@@ -77,13 +79,13 @@ formal:
 
 vivado: $(TOP).bit
 
-$(TOP).bit: $(TOP).tcl $(SRC) $(BOARD_SRC) $(TOP).vhd $(TOP).xdc
+$(TOP).bit: $(TOP).tcl $(SRC) $(BOARD_SRC) src/$(TOP).vhd src/$(TOP).xdc
 	bash -c "source $(XILINX_DIR)/settings64.sh ; vivado -mode batch -source $<"
 
 $(TOP).tcl: Makefile
 	echo "# This is a tcl command script for the Vivado tool chain" > $@
-	echo "read_vhdl -vhdl2008 { $(SRC) $(BOARD_SRC) $(TOP).vhd }" >> $@
-	echo "read_xdc $(TOP).xdc" >> $@
+	echo "read_vhdl -vhdl2008 { $(SRC) $(BOARD_SRC) src/$(TOP).vhd }" >> $@
+	echo "read_xdc src/$(TOP).xdc" >> $@
 	echo "synth_design -top $(TOP) -part xc7a100tcsg324-1 -flatten_hierarchy rebuilt -assert" >> $@
 	echo "write_checkpoint -force post_synth.dcp" >> $@
 	echo "opt_design" >> $@
