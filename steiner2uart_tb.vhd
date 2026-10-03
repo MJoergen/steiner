@@ -40,6 +40,7 @@ architecture simulation of steiner2uart_tb is
   signal char_valid    : std_logic;
   signal char_ready    : std_logic := '0';
   signal char_data     : std_logic_vector(7 downto 0);
+  signal text_done     : std_logic;
 
 begin
 
@@ -75,7 +76,9 @@ begin
       s_data_i  => steiner_data,
       m_valid_o => char_valid,
       m_ready_i => char_ready,
-      m_data_o  => char_data
+      m_data_o  => char_data,
+      done_i    => done,
+      done_o    => text_done
     ); -- steiner2uart_inst
 
   -- Accept each character with a probability of 30 %
@@ -126,13 +129,11 @@ begin
     end if;
   end process handshake_proc;
 
-  -- The text is finished when the search is done, and steiner2uart.vhd is waiting
-  -- for the next solution. done goes high one clock cycle after the last solution
-  -- is accepted, when steiner2uart.vhd is busy with it.
+  -- The text is finished when steiner2uart.vhd has sent the number of solutions
   finish_proc : process
   begin
-    wait until done = '1' and steiner_ready = '1' for G_TIMEOUT;
-    assert done = '1' and steiner_ready = '1'
+    wait until text_done = '1' for G_TIMEOUT;
+    assert text_done = '1'
       report "Text not finished within " & time'image(G_TIMEOUT)
       severity failure;
     finished <= '1';

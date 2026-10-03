@@ -9,6 +9,11 @@
 -- The row index is right-aligned, and as wide as the largest row index. Each line
 -- ends with CR LF, and each solution is followed by an empty line.
 --
+-- When the search is done, it sends one more line with the number of solutions,
+-- e.g. "840 solutions found.", and then raises done_o. The solutions are counted
+-- in decimal, so the number needs no conversion. Its leading zeros are skipped,
+-- one per clock cycle.
+--
 -- The row index isn't part of the solution, so it is calculated from the columns of
 -- the row, one column per clock cycle. Rows are numbered in lexicographic order of
 -- their columns, so the index of a row is the number of rows that come before it:
@@ -40,7 +45,11 @@ entity steiner2uart is
     -- One ASCII character at a time
     m_valid_o : out std_logic;
     m_ready_i : in  std_logic;
-    m_data_o  : out std_logic_vector(7 downto 0)
+    m_data_o  : out std_logic_vector(7 downto 0);
+    -- The search is done, from done_o of steiner.vhd
+    done_i    : in  std_logic;
+    -- All the text has been sent, including the number of solutions
+    done_o    : out std_logic
   );
 end entity steiner2uart;
 
@@ -77,16 +86,69 @@ architecture synthesis of steiner2uart is
   constant C_CR : char_t := X"0D";
   constant C_LF : char_t := X"0A";
 
+  -- The number of solutions, in decimal, with the most significant digit first.
+  -- This is more digits than any search that finishes in practice needs.
+  constant C_COUNT_DIGITS : natural := 10;
+
+  type count_t is array (0 to C_COUNT_DIGITS-1) of natural range 0 to 9;
+
+  pure function increment(count : count_t) return count_t is
+    variable res   : count_t := count;
+    variable carry : boolean := true;
+  begin
+    for d in C_COUNT_DIGITS-1 downto 0 loop
+      if carry then
+        if res(d) = 9 then
+          res(d) := 0;
+        else
+          res(d) := res(d) + 1;
+          carry  := false;
+        end if;
+      end if;
+    end loop;
+    return res;
+  end function increment;
+
+  -- The last line is the number of solutions, this text, and CR LF
+  constant C_FOUND   : string  := " solutions found.";
+  constant C_SUMMARY : natural := C_COUNT_DIGITS + C_FOUND'length + 2;
+
+  -- The line being sent is either a row of a solution, or the last line
+  pure function calc_buffer return natural is
+  begin
+    if C_LINE > C_SUMMARY then
+      return C_LINE;
+    end if;
+    return C_SUMMARY;
+  end function calc_buffer;
+
+  constant C_BUFFER : natural := calc_buffer;
+
   -- The characters of a line that are the same for every row
   pure function line_init return chars_t is
-    variable res : chars_t(0 to C_LINE-1) := (others => to_char(' '));
+    variable res : chars_t(0 to C_BUFFER-1) := (others => to_char(' '));
   begin
     res(C_LINE-2) := C_CR;
     res(C_LINE-1) := C_LF;
     return res;
   end function line_init;
 
-  constant C_LINE_INIT : chars_t(0 to C_LINE-1) := line_init;
+  constant C_LINE_INIT : chars_t(0 to C_BUFFER-1) := line_init;
+
+  -- The last line, with the leading zeros of the number of solutions
+  pure function summary_init(count : count_t) return chars_t is
+    variable res : chars_t(0 to C_BUFFER-1) := (others => to_char(' '));
+  begin
+    for d in 0 to C_COUNT_DIGITS-1 loop
+      res(d) := to_char(character'val(character'pos('0') + count(d)));
+    end loop;
+    for i in 1 to C_FOUND'length loop
+      res(C_COUNT_DIGITS + i-1) := to_char(C_FOUND(i));
+    end loop;
+    res(C_SUMMARY-2) := C_CR;
+    res(C_SUMMARY-1) := C_LF;
+    return res;
+  end function summary_init;
 
   -- The number of rows that have column "j", and the same columns before "j" as a
   -- row that has "i" columns before "j", but not "j" itself
@@ -123,14 +185,19 @@ architecture synthesis of steiner2uart is
     IDLE_ST,     -- Wait for a solution
     INDEX_ST,    -- Find the index of the current row, one column per clock cycle
     DECIMAL_ST,  -- Convert the index to decimal, one subtraction per clock cycle
-    SEND_ST      -- Send the line, one character at a time
+    ZEROS_ST,    -- Skip the leading zeros of the number of solutions
+    SEND_ST,     -- Send the line, one character at a time
+    DONE_ST      -- All the text has been sent
   );
 
   signal state : state_type := IDLE_ST;
 
   -- The rows that have not been sent yet, with the current row first
   signal rows   : std_logic_vector(s_data_i'range);
-  signal row    : natural range 0 to C_B;
+  signal count  : count_t := (others => 0);
+  -- Rows 0 to C_B-1 are the rows of the solution, row C_B is the empty line after
+  -- it, and row C_B+1 is the last line, with the number of solutions
+  signal row    : natural range 0 to C_B+1;
   signal column : natural range 0 to G_N-1;
   signal ones   : natural range 0 to G_N;
   signal index  : natural range 0 to C_NUM_ROWS-1;
@@ -141,8 +208,8 @@ architecture synthesis of steiner2uart is
   signal leading : boolean;
 
   -- The characters of the line that have not been sent yet, and how many there are
-  signal line      : chars_t(0 to C_LINE-1);
-  signal remaining : natural range 0 to C_LINE;
+  signal line      : chars_t(0 to C_BUFFER-1);
+  signal remaining : natural range 0 to C_BUFFER;
 
 begin
 
@@ -151,6 +218,8 @@ begin
   m_valid_o <= '1' when state = SEND_ST else
                '0';
   m_data_o  <= line(0);
+  done_o    <= '1' when state = DONE_ST else
+               '0';
 
   fsm_proc : process (clk_i)
   begin
@@ -166,7 +235,13 @@ begin
             ones   <= 0;
             index  <= 0;
             line   <= C_LINE_INIT;
+            count  <= increment(count);
             state  <= INDEX_ST;
+          elsif done_i = '1' then
+            row       <= C_B+1;
+            line      <= summary_init(count);
+            remaining <= C_SUMMARY;
+            state     <= ZEROS_ST;
           end if;
 
         when INDEX_ST =>
@@ -206,9 +281,18 @@ begin
             end if;
           end if;
 
+        when ZEROS_ST =>
+          -- The last digit is sent even if it is zero
+          if line(0) = to_char('0') and remaining > C_SUMMARY - C_COUNT_DIGITS + 1 then
+            line      <= line(1 to C_BUFFER-1) & to_char(' ');
+            remaining <= remaining - 1;
+          else
+            state <= SEND_ST;
+          end if;
+
         when SEND_ST =>
           if m_ready_i = '1' then
-            line      <= line(1 to C_LINE-1) & to_char(' ');
+            line      <= line(1 to C_BUFFER-1) & to_char(' ');
             remaining <= remaining - 1;
             if remaining = 1 then
               if row < C_B-1 then
@@ -226,15 +310,21 @@ begin
                 line(0)   <= C_CR;
                 line(1)   <= C_LF;
                 remaining <= 2;
-              else
+              elsif row = C_B then
                 state <= IDLE_ST;
+              else
+                state <= DONE_ST;
               end if;
             end if;
           end if;
 
+        when DONE_ST =>
+          null;
+
       end case;
 
       if rst_i = '1' then
+        count <= (others => 0);
         state <= IDLE_ST;
       end if;
     end if;
