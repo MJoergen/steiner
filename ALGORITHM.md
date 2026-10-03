@@ -50,9 +50,17 @@ A Steiner system exists for each of these.
 
 This is necessary, but not enough, for a Steiner system to exist. For example,
 `(2, 7, 43)` is admissible, with `b = 43` and `r = 7`, but there is no such
-Steiner system, since there is no projective plane of order 6 (the
-nonexistence of finite projective planes of order 6 is a classical result of
-[Lam, Thiel, and Swiercz](https://link.springer.com/article/10.1007/BF00181469)).
+Steiner system. A [projective plane](https://en.wikipedia.org/wiki/Projective_plane)
+of order `q` has `q^2 + q + 1` points and as many lines, each line has `q + 1`
+points, and any two points are on exactly one line. Taking the points as columns
+and the lines as rows, this is exactly a Steiner system `(2, q+1, q^2+q+1)`, and
+the other way round. So `(2, 7, 43)` would be a projective plane of order 6,
+and there is none: this follows from the
+[Bruck-Ryser theorem](https://en.wikipedia.org/wiki/Bruck%E2%80%93Ryser%E2%80%93Chowla_theorem),
+and was first shown by Tarry in 1900 as the
+[36 officers problem](https://en.wikipedia.org/wiki/Thirty-six_officers_problem).
+For example, `(2, 3, 7)` above is the projective plane of order 2, the
+[Fano plane](https://en.wikipedia.org/wiki/Fano_plane).
 
 The design only accepts admissible parameters. `steiner.vhd` checks them at
 elaboration time, and stops with an error otherwise, in simulation, in the formal
