@@ -36,6 +36,18 @@ every `l_i` is a whole number are called admissible. For example:
 * `(2, 3, n)` is admissible when `n` is 1 or 3 modulo 6.
 * `(3, 4, n)` is admissible when `n` is 2 or 4 modulo 6.
 
+These are all the admissible parameters with `n <= 10` and `t >= 2`. The design
+also needs `t < k < n`, and the case `t = 1` is just the first rule above.
+
+| `(t, k, n)`  | `b` | `r` |
+| ------------ | --: | --: |
+| `(2, 3, 7)`  |   7 |   3 |
+| `(2, 3, 9)`  |  12 |   4 |
+| `(3, 4, 8)`  |  14 |   7 |
+| `(3, 4, 10)` |  30 |  12 |
+
+A Steiner system exists for each of these.
+
 This is necessary, but not enough, for a Steiner system to exist. For example,
 `(2, 7, 43)` is admissible, with `b = 43` and `r = 7`, but there is no such
 Steiner system, since there is no projective plane of order 6 (the
