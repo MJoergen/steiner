@@ -224,7 +224,8 @@ For larger parameters you may need to make the rectangle larger.
 
 Each solution is sent as text over the board's USB-UART, at 115200 baud with 8N1,
 in the same layout as the example above: one line for each row, with its index, and
-an empty line after each solution. Lines end with CR LF. The search waits while a
+an empty line after each solution. At the end there is a line with the number of
+solutions, e.g. `840 solutions found.`. Lines end with CR LF. The search waits while a
 solution is being sent, so on the board it takes about 12 seconds to send all 840
 solutions for `(2, 3, 9)`, rather than 0.66 ms.
 

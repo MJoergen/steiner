@@ -9,7 +9,8 @@ files and the testbench output, so the outputs can be compared with diff.
 
 With --text, each solution is printed as the text that steiner2uart.vhd sends
 instead: one line for each row, with its index and its columns, and an empty
-line after each solution. Lines end with CR LF.
+line after each solution, and at the end a line with the number of
+solutions, e.g. "840 solutions found.". Lines end with CR LF.
 
 This works completely differently from the search in steiner.vhd, so that
 they can check each other. It finds the Steiner systems as an exact cover:
@@ -74,11 +75,14 @@ def main():
     if len(args) != 3:
         sys.exit(__doc__)
     t, k, n = map(int, args)
-    for solution in steiner_systems(t, k, n):
+    solutions = steiner_systems(t, k, n)
+    for solution in solutions:
         if text:
             print_text(n, k, solution)
         else:
             print('[' + ', '.join(map(str, solution)) + ']')
+    if text:
+        print(f'{len(solutions)} solutions found.', end='\r\n')
 
 
 if __name__ == '__main__':

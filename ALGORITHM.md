@@ -37,7 +37,7 @@ every `l_i` is a whole number are called admissible. For example:
 * `(n, 4, 3)` is admissible when `n` is 2 or 4 modulo 6.
 
 This is necessary, but not enough, for a Steiner system to exist. For example,
-`(43, 7, 2)` is admissible, with `b = 43` and `r = 7`, but there is no such
+`(2, 7, 43)` is admissible, with `b = 43` and `r = 7`, but there is no such
 Steiner system, since there is no projective plane of order 6.
 
 The design only accepts admissible parameters. `steiner.vhd` checks them at
@@ -47,7 +47,7 @@ Without this check, `b`, `r` and `l_2` would be rounded down. Then a set of `b`
 rows with no conflicts covers fewer than all the sets of `t` columns, so it isn't
 a Steiner system. And the early pruning, which relies on each column being in
 exactly `r` rows, would let only some of these sets through. For example, for
-`(9, 2, 1)`, `b` would be 4 (rounded down from 4.5), and the design would output
+`(1, 2, 9)`, `b` would be 4 (rounded down from 4.5), and the design would output
 840 of the 945 sets of 4 disjoint pairs of columns.
 
 ## The search
