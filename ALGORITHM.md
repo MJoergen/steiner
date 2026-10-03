@@ -1,6 +1,6 @@
 # Search algorithm
 
-This explains the search used in [`steiner.vhd`](steiner.vhd), how it is
+This explains the search used in [`steiner.vhd`](src/steiner.vhd), how it is
 implemented so that it runs at 190 MHz, and what limits the clock frequency.
 
 ## Rows and conflicts
@@ -13,7 +13,7 @@ Two rows conflict if they share `t` or more columns. A solution is a set of `b`
 rows where no two rows conflict. Every row conflicts with itself, since `k >= t`.
 
 Sets of rows are kept as bit vectors with one bit for each row, so that set
-operations are just AND, OR and NOT. [`valid.vhd`](valid.vhd) computes, at
+operations are just AND, OR and NOT. [`valid.vhd`](src/valid.vhd) computes, at
 elaboration time, which pairs of rows conflict. Given one row as a one-hot
 vector, it outputs the set of rows that don't conflict with it.
 

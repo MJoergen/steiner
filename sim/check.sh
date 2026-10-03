@@ -1,5 +1,5 @@
 #!/bin/bash
-# Checks one parameter set: ./check.sh T K N, run by "make check" after it has built
+# Checks one parameter set: sim/check.sh T K N, run by "make check" after it has built
 # steiner_tb and steiner2uart_tb. The solutions must be exactly those of the reference
 # model, in the same order, and those in the results file, if there is one. The text
 # from steiner2uart.vhd must be exactly that of the reference model.
