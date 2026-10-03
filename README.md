@@ -89,6 +89,7 @@ the clock frequency.
 | [`steiner_ref.py`](steiner_ref.py)         | Reference model in Python, see [Simulation](#simulation). |
 | [`formal/`](formal)                        | Formal verification, see [Formal verification](#formal-verification). |
 | [`nexys4ddr.vhd`](nexys4ddr.vhd), [`nexys4ddr.xdc`](nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |
+| [`clk_rst.vhd`](clk_rst.vhd)               | Clock and reset for the Nexys 4 DDR board.               |
 | `result_*.txt`                             | All solutions for the parameters in the file name.       |
 | [`ALGORITHM.md`](ALGORITHM.md)             | Detailed explanation of the algorithm and its timing.    |
 | [`Makefile`](Makefile)                     | Runs the simulation, the formal verification, and the synthesis, see [Running](#running). |
@@ -213,8 +214,9 @@ gtkwave steiner_prove_421/engine_0/trace_induct.vcd
 Nexys 4 DDR board. It stops with an error if the parameters aren't admissible, or if
 the design doesn't meet timing. The timing report is in `nexys4ddr_timing.rpt`.
 
-The top level `nexys4ddr.vhd` makes a 180 MHz clock from the 100 MHz board clock
-with an MMCM, and turns the `CPU_RESETN` button into a synchronous reset. The
+In the top level `nexys4ddr.vhd`, `clk_rst.vhd` makes a 180 MHz clock from the
+100 MHz board clock with an MMCM, and turns the `CPU_RESETN` button into a
+synchronous reset. The
 search starts when the MMCM has locked, and again whenever you press the button.
 LED0 shows `m_valid_o` and LED1 shows `done_o`. The parameters are set by the
 constants `C_N`, `C_K` and `C_T` in `nexys4ddr.vhd`.

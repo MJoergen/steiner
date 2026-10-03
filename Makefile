@@ -6,6 +6,9 @@ SRC += steiner2uart.vhd
 SRC += uart.vhd
 TOP = nexys4ddr
 
+# Sources that are only synthesized, because they use Xilinx primitives
+BOARD_SRC = clk_rst.vhd
+
 TB = steiner_tb
 TEXT_TB = steiner2uart_tb
 
@@ -91,12 +94,12 @@ formal:
 
 vivado: $(TOP).bit
 
-$(TOP).bit: $(TOP).tcl $(SRC) $(TOP).vhd $(TOP).xdc
+$(TOP).bit: $(TOP).tcl $(SRC) $(BOARD_SRC) $(TOP).vhd $(TOP).xdc
 	bash -c "source $(XILINX_DIR)/settings64.sh ; vivado -mode batch -source $<"
 
 $(TOP).tcl: Makefile
 	echo "# This is a tcl command script for the Vivado tool chain" > $@
-	echo "read_vhdl -vhdl2008 { $(SRC) $(TOP).vhd }" >> $@
+	echo "read_vhdl -vhdl2008 { $(SRC) $(BOARD_SRC) $(TOP).vhd }" >> $@
 	echo "read_xdc $(TOP).xdc" >> $@
 	echo "synth_design -top $(TOP) -part xc7a100tcsg324-1 -flatten_hierarchy rebuilt -assert" >> $@
 	echo "write_checkpoint -force post_synth.dcp" >> $@
