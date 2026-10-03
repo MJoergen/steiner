@@ -14,6 +14,9 @@
 -- in decimal, so the number needs no conversion. Its leading zeros are skipped,
 -- one per clock cycle.
 --
+-- The number of solutions accepted so far is also on count_o, e.g. for the 7-segment
+-- display. It is in BCD, with the least significant digit in bits 3 downto 0.
+--
 -- The row index isn't part of the solution, so it is calculated from the columns of
 -- the row, one column per clock cycle. Rows are numbered in lexicographic order of
 -- their columns, so the index of a row is the number of rows that come before it:
@@ -49,7 +52,9 @@ entity steiner2uart is
     -- The search is done, from done_o of steiner.vhd
     done_i    : in  std_logic;
     -- All the text has been sent, including the number of solutions
-    done_o    : out std_logic
+    done_o    : out std_logic;
+    -- The number of solutions accepted so far, in BCD
+    count_o   : out std_logic_vector(4 * C_COUNT_DIGITS - 1 downto 0)
   );
 end entity steiner2uart;
 
@@ -86,10 +91,7 @@ architecture synthesis of steiner2uart is
   constant C_CR : char_t := X"0D";
   constant C_LF : char_t := X"0A";
 
-  -- The number of solutions, in decimal, with the most significant digit first.
-  -- This is more digits than any search that finishes in practice needs.
-  constant C_COUNT_DIGITS : natural := 10;
-
+  -- The number of solutions, in decimal, with the most significant digit first
   type count_t is array (0 to C_COUNT_DIGITS-1) of natural range 0 to 9;
 
   pure function increment(count : count_t) return count_t is
@@ -221,6 +223,10 @@ begin
   m_data_o  <= line(0);
   done_o    <= '1' when state = DONE_ST else
                '0';
+
+  count_gen : for d in 0 to C_COUNT_DIGITS-1 generate
+    count_o(4*d+3 downto 4*d) <= std_logic_vector(to_unsigned(count(C_COUNT_DIGITS-1-d), 4));
+  end generate count_gen;
 
   fsm_proc : process (clk_i)
   begin

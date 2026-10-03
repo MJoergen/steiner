@@ -30,3 +30,8 @@ jobs:
       # from steiner2uart.vhd must be exactly that of steiner_ref.py --text.
       - name: Run the simulations
         run: make check
+
+      # Checks that the 7-segment display shows the right digits, with the
+      # leading zeros blank
+      - name: Run the display simulation
+        run: make display

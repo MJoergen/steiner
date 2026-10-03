@@ -6,6 +6,10 @@ library ieee;
 
 package steiner_pkg is
 
+  -- The number of decimal digits in the number of solutions from steiner2uart.vhd.
+  -- This is more digits than any search that finishes in practice needs.
+  constant C_COUNT_DIGITS : natural := 10;
+
   -- Calculate the binomial coefficient B(n,k)
   pure function binom(n : natural; k : natural) return natural;
 

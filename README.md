@@ -82,11 +82,13 @@ the clock frequency.
 | [`src/steiner_pkg.vhd`](src/steiner_pkg.vhd) | Binomial coefficient, number of rows, and the columns of a row. |
 | [`src/steiner2uart.vhd`](src/steiner2uart.vhd) | Converts each solution to text, see [Synthesis](#synthesis). |
 | [`src/uart.vhd`](src/uart.vhd)               | UART that sends the text.                                |
+| [`src/display.vhd`](src/display.vhd)         | Shows the number of solutions on the 7-segment display.  |
 | [`src/nexys4ddr.vhd`](src/nexys4ddr.vhd), [`src/nexys4ddr.xdc`](src/nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |
 | [`src/clk_rst.vhd`](src/clk_rst.vhd)         | Clock and reset for the Nexys 4 DDR board.               |
 | [`sim/steiner_tb.vhd`](sim/steiner_tb.vhd)   | Testbench, see [Simulation](#simulation).                |
 | [`sim/steiner2uart_tb.vhd`](sim/steiner2uart_tb.vhd) | Testbench for `steiner2uart.vhd`, see [Simulation](#simulation). |
 | [`sim/uart_tb.vhd`](sim/uart_tb.vhd)         | Testbench for `uart.vhd`, run by `make uart`.            |
+| [`sim/display_tb.vhd`](sim/display_tb.vhd)   | Testbench for `display.vhd`, run by `make display`.      |
 | [`sim/steiner_tb.gtkw`](sim/steiner_tb.gtkw) | GTKWave setup for viewing the waveform from `make sim`.  |
 | [`sim/check.sh`](sim/check.sh)               | Compares one parameter set with the reference model, run by `make check`. |
 | [`steiner_ref.py`](steiner_ref.py)           | Reference model in Python, see [Simulation](#simulation). |
@@ -134,6 +136,7 @@ Type `make` to list the supported targets:
   [Simulation](#simulation). This also requires Python 3. It takes about 20 seconds.
 * `make uart` runs the testbench of the UART, for each clock divisor in
   `UART_DIVISORS` in the `Makefile`. This requires GHDL.
+* `make display` runs the testbench of the 7-segment display. This requires GHDL.
 * `make show` shows the waveform from `make sim` in
   [GTKWave](https://gtkwave.sourceforge.net/).
 * `make formal` runs the formal verification, see
@@ -147,7 +150,7 @@ Type `make` to list the supported targets:
   and takes about 2 minutes.
 * `make clean` removes the generated files.
 
-The CI runs `make check` ([`sim.yml`](.github/workflows/sim.yml)) and `make formal`
+The CI runs `make check` and `make display` ([`sim.yml`](.github/workflows/sim.yml)) and `make formal`
 ([`formal.yml`](.github/workflows/formal.yml)) for every push to `main` and every
 pull request.
 
@@ -184,7 +187,8 @@ For each parameter set, `make check` also runs
 [`sim/steiner2uart_tb.vhd`](sim/steiner2uart_tb.vhd), which converts every solution to text
 with `steiner2uart.vhd`, and compares the text with that of
 `steiner_ref.py --text`. It accepts the characters at random, so the search has to
-wait, and fails if a character changes while it is waiting to be accepted.
+wait, and fails if a character changes while it is waiting to be accepted, or if
+the number of solutions on `count_o` (for the 7-segment display) is wrong.
 
 ## Formal verification
 
@@ -229,6 +233,12 @@ an empty line after each solution. At the end there is a line with the number of
 solutions, e.g. `840 solutions found.`. Lines end with CR LF. The search waits while a
 solution is being sent, so on the board it takes about 12 seconds to send all 840
 solutions for `(2, 3, 9)`, rather than 0.66 ms.
+
+While the search runs, the 7-segment display shows the number of solutions sent so
+far, in decimal, with the leading zeros blank. It counts a solution when
+`steiner2uart.vhd` accepts it for sending, so it climbs slowly, at the speed of the
+UART: about 70 solutions per second for `(2, 3, 9)`. It shows the last eight digits
+of the count.
 
 ## License
 

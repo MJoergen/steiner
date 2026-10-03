@@ -4,6 +4,8 @@
 -- * It sends each solution as text over the UART, at 115200 baud with 8N1, see
 --   steiner2uart.vhd. The search waits while the solutions are being sent. At the
 --   end it sends the number of solutions.
+-- * It shows the number of solutions sent so far on the 7-segment display, in
+--   decimal, see display.vhd.
 
 library ieee;
   use ieee.std_logic_1164.all;
@@ -16,6 +18,9 @@ entity nexys4ddr is
     rstn_i     : in  std_logic;   -- Active low (CPU_RESETN)
     valid_o    : out std_logic;
     done_o     : out std_logic;
+    an_o       : out std_logic_vector(7 downto 0);   -- Active low
+    seg_o      : out std_logic_vector(6 downto 0);   -- CA to CG, active low
+    dp_o       : out std_logic;                      -- Active low
     uart_txd_i : in  std_logic;
     uart_rxd_o : out std_logic
   );
@@ -42,6 +47,8 @@ architecture synthesis of nexys4ddr is
   signal uart_tx_valid : std_logic;
   signal uart_tx_ready : std_logic;
   signal uart_tx_data  : std_logic_vector(7 downto 0);
+
+  signal count : std_logic_vector(4 * C_COUNT_DIGITS - 1 downto 0);
 
 begin
 
@@ -87,8 +94,23 @@ begin
       m_ready_i => uart_tx_ready,
       m_data_o  => uart_tx_data,
       done_i    => steiner_done,
-      done_o    => open
+      done_o    => open,
+      count_o   => count
     ); -- steiner2uart_inst
+
+  -- The display has eight digits, so it shows the last eight digits of the count
+  display_inst : entity work.display
+    generic map (
+      G_DIGITS => 8
+    )
+    port map (
+      clk_i   => clk,
+      value_i => count(31 downto 0),
+      an_o    => an_o,
+      seg_o   => seg_o
+    ); -- display_inst
+
+  dp_o <= '1';
 
   uart_inst : entity work.uart
     generic map (

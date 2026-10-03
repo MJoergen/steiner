@@ -6,6 +6,7 @@ SRC += src/valid.vhd
 SRC += src/steiner.vhd
 SRC += src/steiner2uart.vhd
 SRC += src/uart.vhd
+SRC += src/display.vhd
 TOP = nexys4ddr
 
 # Sources that are only synthesized, because they use Xilinx primitives
@@ -26,7 +27,7 @@ CHECK = 1_2_4 1_2_6 1_3_6 2_3_7 1_2_8 1_4_8 3_4_8 1_3_9 2_3_9 1_2_10 1_5_10
 # Clock divisors that "make uart" simulates uart.vhd with
 UART_DIVISORS = 2 5 16 17
 
-.PHONY: help sim check uart show formal vivado clean
+.PHONY: help sim check uart display show formal vivado clean
 
 help:
 	@echo "Supported targets:"
@@ -38,6 +39,7 @@ help:
 	@echo "                   with steiner_ref.py"
 	@echo "  make uart        Simulate uart.vhd using GHDL for each clock divisor in"
 	@echo "                   UART_DIVISORS"
+	@echo "  make display     Simulate display.vhd using GHDL"
 	@echo "  make show        Show the simulation waveform using GTKWave"
 	@echo "  make formal      Run formal verification using SymbiYosys"
 	@echo "  make vivado      Synthesize the design using Vivado, writing $(TOP).bit"
@@ -65,6 +67,11 @@ uart:
 	@for g in $(UART_DIVISORS); do \
 	  ghdl -r --std=08 uart_tb -gG_DIVISOR=$$g --assert-level=error || exit 1; \
 	done
+
+display:
+	ghdl -a --std=08 src/display.vhd sim/display_tb.vhd
+	ghdl -e --std=08 display_tb
+	ghdl -r --std=08 display_tb --assert-level=error
 
 show:
 	gtkwave $(TB).ghw sim/$(TB).gtkw
@@ -108,7 +115,7 @@ $(TOP).tcl: Makefile
 ################################################
 
 clean:
-	rm -f *.cf *.o *.ghw $(TB) $(TB).txt $(TEXT_TB) $(TEXT_TB).txt check_* uart_tb
+	rm -f *.cf *.o *.ghw $(TB) $(TB).txt $(TEXT_TB) $(TEXT_TB).txt check_* uart_tb display_tb
 	rm -rf .Xil
 	rm -f $(TOP).tcl $(TOP).bit *.dcp *.rpt *.jou *.log
 	rm -f clockInfo.txt tight_setup_hold_pins.txt usage_statistics_webtalk.*
