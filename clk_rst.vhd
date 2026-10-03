@@ -1,6 +1,6 @@
 -- This generates the clock and reset for the Nexys 4 DDR board.
--- * It generates a 180 MHz clock from the 100 MHz board clock. This is the fastest
---   clock where the search logic meets timing with some margin.
+-- * It generates a 190 MHz clock from the 100 MHz board clock. This is the fastest
+--   clock where the search logic reliably meets timing, see ALGORITHM.md.
 -- * It converts the active-low reset button into a synchronous active-high reset.
 --   The reset is also active until the MMCM has locked.
 
@@ -14,7 +14,7 @@ entity clk_rst is
   port (
     clk_i  : in  std_logic;   -- 100 MHz
     rstn_i : in  std_logic;   -- Active low, asynchronous
-    clk_o  : out std_logic;   -- 180 MHz
+    clk_o  : out std_logic;   -- 190 MHz
     rst_o  : out std_logic    -- Active high, synchronous to clk_o
   );
 end entity clk_rst;
@@ -34,12 +34,12 @@ architecture synthesis of clk_rst is
 
 begin
 
-  -- VCO = 100 MHz * 9 / 1 = 900 MHz. Output = 900 MHz / 5 = 180 MHz.
+  -- VCO = 100 MHz * 9.5 / 1 = 950 MHz. Output = 950 MHz / 5 = 190 MHz.
   mmcm_inst : component mmcme2_base
     generic map (
       CLKIN1_PERIOD    => 10.0,
       DIVCLK_DIVIDE    => 1,
-      CLKFBOUT_MULT_F  => 9.0,
+      CLKFBOUT_MULT_F  => 9.5,
       CLKOUT0_DIVIDE_F => 5.0
     )
     port map (

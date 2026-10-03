@@ -1,5 +1,5 @@
 -- This is the top level file for the Nexys 4 DDR board.
--- * It runs the search on a 180 MHz clock, with a synchronous reset from the reset
+-- * It runs the search on a 190 MHz clock, with a synchronous reset from the reset
 --   button, see clk_rst.vhd.
 -- * It sends each solution as text over the UART, at 115200 baud with 8N1, see
 --   steiner2uart.vhd. The search waits while the solutions are being sent.
@@ -27,10 +27,10 @@ architecture synthesis of nexys4ddr is
   constant C_T : natural := 2;
 
   -- The frequency of the clock from clk_rst.vhd
-  constant C_CLK_SPEED_HZ : positive := 180_000_000;
+  constant C_CLK_SPEED_HZ : positive := 190_000_000;
   constant C_BAUDRATE     : positive := 115_200;
 
-  signal clk : std_logic;   -- 180 MHz
+  signal clk : std_logic;   -- 190 MHz
   signal rst : std_logic;
 
   signal steiner_valid : std_logic;

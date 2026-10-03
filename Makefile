@@ -107,6 +107,7 @@ $(TOP).tcl: Makefile
 	echo "place_design -directive ExtraTimingOpt" >> $@
 	echo "phys_opt_design -directive AggressiveExplore" >> $@
 	echo "route_design -directive AggressiveExplore" >> $@
+	echo "phys_opt_design -directive AggressiveExplore" >> $@
 	echo "write_checkpoint -force post_route.dcp" >> $@
 	echo "report_timing_summary -file $(TOP)_timing.rpt" >> $@
 	echo "if {[get_property SLACK [get_timing_paths -setup]] < 0 || [get_property SLACK [get_timing_paths -hold]] < 0} {" >> $@

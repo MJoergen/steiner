@@ -1,7 +1,7 @@
 # Search algorithm
 
 This explains the search used in [`steiner.vhd`](steiner.vhd), how it is
-implemented so that it runs at 180 MHz, and what limits the clock frequency.
+implemented so that it runs at 190 MHz, and what limits the clock frequency.
 
 ## Rows and conflicts
 
@@ -229,6 +229,7 @@ original design). It varies by about 4% between runs, because of placement.
 | Lookup for each segment, flattened hierarchy                 | 187         |  611 |  101 |
 | Delayed stack write                                          | 186         |  669 |  274 |
 | More aggressive placement and routing directives             | 196         |  695 |  277 |
+| Pblock, and `phys_opt_design` after routing                  | 197         |  957 |  488 |
 
 The second step is where the number of clock cycles drops, see
 [Compared with the original design](#compared-with-the-original-design). The
@@ -237,12 +238,30 @@ fourth. The delayed stack write made no measurable difference on its own. It
 took the RAM writes out of the worst paths, but the decision path is just as
 long.
 
-The build (`make vivado`) uses 180 MHz. In repeated runs, the design met timing
-at 175, 180 and 185 MHz, and once at 195 MHz, but failed at 187.5 and 190 MHz.
-So 180 MHz leaves some margin.
+The last step doesn't change the design, only how it is placed and routed:
 
-With 124,586 clock cycles at 180 MHz, the whole search for `(9, 3, 2)` takes
-0.69 ms, compared with 11.4 ms for the original design at 90 MHz.
+* The pblock in `nexys4ddr.xdc` keeps the search in a rectangle of 16 x 20 slices,
+  and the search uses about three quarters of its LUTs. The critical paths are
+  mostly routing, so shorter routes make them faster.
+* `phys_opt_design` also runs after `route_design`, and fixes some of the paths
+  that the router leaves just failing.
+
+The single runs in the table vary too much to show this, so the clock of the last
+step is the average of 8 runs, between 192.5 and 210 MHz. The same average for
+the step before is 189 MHz, and with only `phys_opt_design` after routing it is
+193 MHz. The LUTs and flip-flops are higher in the last step, because `m_data_o`
+is now connected to `steiner2uart.vhd`. Before, it was left open, so the columns
+of the placed rows and the output register were optimized away.
+
+The build (`make vivado`) uses 190 MHz. In repeated runs with the pblock, every
+run met timing at 187.5, 190 and 192.5 MHz, about three out of four at 195 MHz,
+and a few at 197.5 to 205 MHz. So 190 MHz leaves some margin. The result changes
+with anything that changes the netlist or its names, even a change outside the
+search. A run that meets timing always has a WNS close to zero, because the
+router and `phys_opt_design` stop as soon as timing is met.
+
+With 124,586 clock cycles at 190 MHz, the whole search for `(9, 3, 2)` takes
+0.66 ms, compared with 11.4 ms for the original design at 90 MHz.
 
 ### Critical paths
 
@@ -266,6 +285,11 @@ whether there is a first row at all.
 * A `max_fanout` attribute on `place`, so that Vivado replicates it.
 * Taking `place` out of the clock enable of `cand`, by updating `cand` even
   when the search is finished.
+* Other options for synthesis: `-flatten_hierarchy full` makes no difference.
+  `-retiming` and `opt_design -directive ExploreWithRemap` are 3-5% slower.
+  `-directive PerformanceOptimized` gives the same netlist.
+* Other placement directives than `ExtraTimingOpt`, and over-constraining the
+  clock during placement. The results are within the variation between runs.
 
 To go much faster, the loop would have to be broken, e.g. by interleaving two
 independent searches of different subtrees. Each would then get a clock cycle
@@ -279,6 +303,7 @@ only every other cycle, and the solutions would no longer come out in order.
 * `cand` and the registers for the delayed write are about `3 * B(n,k)`
   flip-flops.
 
-For `(9, 3, 2)` the whole design uses 664 LUTs (56 of them as distributed RAM)
-and 274 flip-flops. The original design grew as `b * B(n,k)` LUTs, since it
+For `(9, 3, 2)` the search uses 957 LUTs (56 of them as distributed RAM) and 488
+flip-flops. About 215 of the flip-flops are the columns of the placed rows and the
+output register, for `m_data_o`. The original design grew as `b * B(n,k)` LUTs, since it
 had a lookup for each placed row.

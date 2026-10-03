@@ -8,8 +8,8 @@ An FPGA design, written in VHDL, that finds every
 parameters by searching all possibilities in hardware. The project was inspired by
 [this video](https://www.youtube.com/watch?v=4xnRZqD7rAo).
 
-On the Nexys 4 DDR board it runs at 180 MHz, and finds all 840 solutions for
-`(n, k, t) = (9, 3, 2)` in 0.69 ms.
+On the Nexys 4 DDR board it runs at 190 MHz, and finds all 840 solutions for
+`(n, k, t) = (9, 3, 2)` in 0.66 ms.
 
 ## The problem
 
@@ -70,7 +70,7 @@ early, using the fact that the first `r` rows of a solution must have column 0,
 and the next rows must have column 1.
 
 [ALGORITHM.md](ALGORITHM.md) explains the algorithm in detail: the search and why it
-works, the early pruning, how the design is built to run at 180 MHz, and what limits
+works, the early pruning, how the design is built to run at 190 MHz, and what limits
 the clock frequency.
 
 ## Files
@@ -214,18 +214,19 @@ gtkwave steiner_prove_421/engine_0/trace_induct.vcd
 Nexys 4 DDR board. It stops with an error if the parameters aren't admissible, or if
 the design doesn't meet timing. The timing report is in `nexys4ddr_timing.rpt`.
 
-In the top level `nexys4ddr.vhd`, `clk_rst.vhd` makes a 180 MHz clock from the
+In the top level `nexys4ddr.vhd`, `clk_rst.vhd` makes a 190 MHz clock from the
 100 MHz board clock with an MMCM, and turns the `CPU_RESETN` button into a
-synchronous reset. The
-search starts when the MMCM has locked, and again whenever you press the button.
+synchronous reset. The search starts when the MMCM has locked, and again whenever you press the button.
 LED0 shows `m_valid_o` and LED1 shows `done_o`. The parameters are set by the
-constants `C_N`, `C_K` and `C_T` in `nexys4ddr.vhd`.
+constants `C_N`, `C_K` and `C_T` in `nexys4ddr.vhd`. `nexys4ddr.xdc` keeps the
+search in a small rectangle of the FPGA (a pblock), so that the routes are short.
+For larger parameters you may need to make the rectangle larger.
 
 Each solution is sent as text over the board's USB-UART, at 115200 baud with 8N1,
 in the same layout as the example above: one line for each row, with its index, and
 an empty line after each solution. Lines end with CR LF. The search waits while a
 solution is being sent, so on the board it takes about 12 seconds to send all 840
-solutions for `(9, 3, 2)`, rather than 0.69 ms.
+solutions for `(9, 3, 2)`, rather than 0.66 ms.
 
 ## License
 
