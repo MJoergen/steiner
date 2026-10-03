@@ -79,13 +79,14 @@ the clock frequency.
 |--------------------------------------------|----------------------------------------------------------|
 | [`steiner.vhd`](steiner.vhd)               | The search.                                              |
 | [`valid.vhd`](valid.vhd)                   | The rows that don't conflict with a given row.           |
-| [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Binomial coefficient function.                           |
+| [`steiner_pkg.vhd`](steiner_pkg.vhd)       | Binomial coefficient, number of rows, and the columns of a row. |
 | [`steiner2uart.vhd`](steiner2uart.vhd)     | Converts each solution to text, see [Synthesis](#synthesis). |
 | [`uart.vhd`](uart.vhd)                     | UART that sends the text.                                |
 | [`steiner2uart_tb.vhd`](steiner2uart_tb.vhd) | Testbench for `steiner2uart.vhd`, see [Simulation](#simulation). |
 | [`uart_tb.vhd`](uart_tb.vhd)               | Testbench for `uart.vhd`, run by `make uart`.            |
 | [`steiner_tb.vhd`](steiner_tb.vhd)         | Testbench, see [Simulation](#simulation).                |
 | [`steiner_tb.gtkw`](steiner_tb.gtkw)       | GTKWave setup for viewing the waveform from `make sim`.  |
+| [`check.sh`](check.sh)                     | Compares one parameter set with the reference model, run by `make check`. |
 | [`steiner_ref.py`](steiner_ref.py)         | Reference model in Python, see [Simulation](#simulation). |
 | [`formal/`](formal)                        | Formal verification, see [Formal verification](#formal-verification). |
 | [`nexys4ddr.vhd`](nexys4ddr.vhd), [`nexys4ddr.xdc`](nexys4ddr.xdc) | Top level and constraints for the Nexys 4 DDR board, see [Synthesis](#synthesis). |

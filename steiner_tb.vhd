@@ -30,7 +30,7 @@ end entity steiner_tb;
 architecture simulation of steiner_tb is
 
   constant C_NUM_ROWS : natural := binom(G_N, G_K);
-  constant C_B        : natural := binom(G_N, G_T) / binom(G_K, G_T);
+  constant C_B        : natural := num_blocks(G_T, G_K, G_N);
 
   -- Each row has length "n", with column 0 on the left
   subtype row_t is std_logic_vector(0 to G_N-1);
@@ -73,18 +73,6 @@ architecture simulation of steiner_tb is
 
   -- All sets of "t" columns
   constant C_TSETS : rows_t(0 to binom(G_N, G_T)-1) := rows_init(G_T);
-
-  -- Count number of 1's in a vector
-  pure function count_ones(arg : std_logic_vector) return natural is
-    variable res : natural := 0;
-  begin
-    for i in arg'range loop
-      if arg(i) = '1' then
-        res := res + 1;
-      end if;
-    end loop;
-    return res;
-  end function count_ones;
 
   -- The number of solutions for the known results, or -1 if unknown
   pure function expected_count return integer is
