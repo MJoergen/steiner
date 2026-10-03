@@ -38,7 +38,9 @@ every `l_i` is a whole number are called admissible. For example:
 
 This is necessary, but not enough, for a Steiner system to exist. For example,
 `(2, 7, 43)` is admissible, with `b = 43` and `r = 7`, but there is no such
-Steiner system, since there is no projective plane of order 6.
+Steiner system, since there is no projective plane of order 6 (the
+nonexistence of finite projective planes of order 6 is a classical result of
+[Lam, Thiel, and Swiercz](https://link.springer.com/article/10.1007/BF00181469)).
 
 The design only accepts admissible parameters. `steiner.vhd` checks them at
 elaboration time, and stops with an error otherwise, in simulation, in the formal
