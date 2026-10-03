@@ -13,13 +13,13 @@ TB = steiner_tb
 TEXT_TB = steiner2uart_tb
 
 # Search parameters for simulation
-N = 9
-K = 3
 T = 2
+K = 3
+N = 9
 
 # Admissible parameter sets that "make check" compares with steiner_ref.py, both the
 # solutions and the text from steiner2uart.vhd
-CHECK = 4_2_1 6_2_1 6_3_1 7_3_2 8_2_1 8_4_1 8_4_3 9_3_1 9_3_2 10_2_1 10_5_1
+CHECK = 1_2_4 1_2_6 1_3_6 2_3_7 1_2_8 1_4_8 3_4_8 1_3_9 2_3_9 1_2_10 1_5_10
 
 # Clock divisors that "make uart" simulates uart.vhd with
 UART_DIVISORS = 2 5 16 17
@@ -44,7 +44,7 @@ help:
 sim:
 	ghdl -a --std=08 $(SRC) $(TB).vhd
 	ghdl -e --std=08 $(TB)
-	ghdl -r --std=08 $(TB) -gG_N=$(N) -gG_K=$(K) -gG_T=$(T) \
+	ghdl -r --std=08 $(TB) -gG_T=$(T) -gG_K=$(K) -gG_N=$(N) \
 		--assert-level=error --wave=$(TB).ghw
 
 # The solutions must be exactly those of the reference model, in the same order,
@@ -56,8 +56,8 @@ check:
 	ghdl -e --std=08 $(TEXT_TB)
 	@for p in $(CHECK); do \
 	  set -- $$(echo $$p | tr _ ' '); \
-	  echo "Checking (n, k, t) = ($$1, $$2, $$3)"; \
-	  ghdl -r --std=08 $(TB) -gG_N=$$1 -gG_K=$$2 -gG_T=$$3 -gG_OUTPUT=check_$$p.txt \
+	  echo "Checking (t, k, n) = ($$1, $$2, $$3)"; \
+	  ghdl -r --std=08 $(TB) -gG_T=$$1 -gG_K=$$2 -gG_N=$$3 -gG_OUTPUT=check_$$p.txt \
 	    --assert-level=error > check_$$p.log 2>&1 || { tail -5 check_$$p.log; exit 1; }; \
 	  python3 steiner_ref.py $$1 $$2 $$3 > check_$$p.ref; \
 	  diff check_$$p.txt check_$$p.ref > /dev/null || \
@@ -66,7 +66,7 @@ check:
 	    diff check_$$p.txt result_$$p.txt > /dev/null || \
 	      { echo "The solutions differ from result_$$p.txt"; exit 1; }; \
 	  fi; \
-	  ghdl -r --std=08 $(TEXT_TB) -gG_N=$$1 -gG_K=$$2 -gG_T=$$3 -gG_OUTPUT=check_text_$$p.txt \
+	  ghdl -r --std=08 $(TEXT_TB) -gG_T=$$1 -gG_K=$$2 -gG_N=$$3 -gG_OUTPUT=check_text_$$p.txt \
 	    --assert-level=error > check_text_$$p.log 2>&1 || { tail -5 check_text_$$p.log; exit 1; }; \
 	  python3 steiner_ref.py --text $$1 $$2 $$3 > check_text_$$p.ref; \
 	  diff check_text_$$p.txt check_text_$$p.ref > /dev/null || \

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reference model: print every Steiner system S(t, k, n).
 
-Usage: steiner_ref.py [--text] N K T
+Usage: steiner_ref.py [--text] T K N
 
 Each solution is printed as the sorted list of its row indices, one solution
 per line, in lexicographic order. This is the same format as the results
@@ -22,7 +22,7 @@ import itertools
 import sys
 
 
-def steiner_systems(n, k, t):
+def steiner_systems(t, k, n):
     # The rows, numbered in lexicographic order of their columns
     rows = list(itertools.combinations(range(n), k))
 
@@ -73,8 +73,8 @@ def main():
         args = args[1:]
     if len(args) != 3:
         sys.exit(__doc__)
-    n, k, t = map(int, args)
-    for solution in steiner_systems(n, k, t):
+    t, k, n = map(int, args)
+    for solution in steiner_systems(t, k, n):
         if text:
             print_text(n, k, solution)
         else:

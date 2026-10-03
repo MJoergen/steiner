@@ -22,9 +22,9 @@ end entity nexys4ddr;
 
 architecture synthesis of nexys4ddr is
 
-  constant C_N : natural := 9;
-  constant C_K : natural := 3;
   constant C_T : natural := 2;
+  constant C_K : natural := 3;
+  constant C_N : natural := 9;
 
   -- The frequency of the clock from clk_rst.vhd
   constant C_CLK_SPEED_HZ : positive := 190_000_000;

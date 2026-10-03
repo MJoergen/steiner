@@ -9,7 +9,7 @@ parameters by searching all possibilities in hardware. The project was inspired 
 [this video](https://www.youtube.com/watch?v=4xnRZqD7rAo).
 
 On the Nexys 4 DDR board it runs at 190 MHz, and finds all 840 solutions for
-`(n, k, t) = (9, 3, 2)` in 0.66 ms.
+`(t, k, n) = (2, 3, 9)` in 0.66 ms.
 
 ## The problem
 
@@ -32,7 +32,7 @@ conditions are called admissible. For example, `(n, 3, 2)` is admissible when `n
 admissible parameters, and stops with an error otherwise, see
 [Admissible parameters](ALGORITHM.md#admissible-parameters).
 
-For example, with `(n, k, t) = (7, 3, 2)` there are `b = 7` rows and `r = 3`. One of
+For example, with `(t, k, n) = (2, 3, 7)` there are `b = 7` rows and `r = 3`. One of
 the solutions is the [Fano plane](https://en.wikipedia.org/wiki/Fano_plane):
 
 ```
@@ -51,11 +51,11 @@ numbered in lexicographic order of their columns, so index 0 is `{0,1,2}`, index
 
 The known results are:
 
-| (n, k, t) | b  | r | Solutions | File                                 |
+| (t, k, n) | b  | r | Solutions | File                                 |
 |-----------|----|---|-----------|--------------------------------------|
-| (7, 3, 2) | 7  | 3 | 30        | [result_7_3_2.txt](result_7_3_2.txt) |
-| (9, 3, 2) | 12 | 4 | 840       | [result_9_3_2.txt](result_9_3_2.txt) |
-| (8, 4, 3) | 14 | 7 | 30        | [result_8_4_3.txt](result_8_4_3.txt) |
+| (2, 3, 7) | 7  | 3 | 30        | [result_2_3_7.txt](result_2_3_7.txt) |
+| (2, 3, 9) | 12 | 4 | 840       | [result_2_3_9.txt](result_2_3_9.txt) |
+| (3, 4, 8) | 14 | 7 | 30        | [result_3_4_8.txt](result_3_4_8.txt) |
 
 Each line in these files is one solution, as the list of its row indices.
 
@@ -65,7 +65,7 @@ The design does a depth-first search with backtracking, placing rows in increasi
 order. It keeps the rows that can still be tried as a bit vector, with one bit for
 each row. Each clock cycle it either places the first of these rows, removing the
 rows that conflict with it, or it backtracks. So each clock cycle visits one node
-of the search tree: 124,586 clock cycles for `(9, 3, 2)`. The search also prunes
+of the search tree: 124,586 clock cycles for `(2, 3, 9)`. The search also prunes
 early, using the fact that the first `r` rows of a solution must have column 0,
 and the next rows must have column 1.
 
@@ -126,7 +126,7 @@ Type `make` to list the supported targets:
 
 * `make sim` runs the testbench, see [Simulation](#simulation). This requires
   [GHDL](https://github.com/ghdl/ghdl). It takes about 10 seconds.
-  `make sim N=7 K=3 T=2` selects other parameters.
+  `make sim T=2 K=3 N=7` selects other parameters.
 * `make check` runs the testbench for each parameter set in `CHECK` in the
   `Makefile`, and compares the solutions, and the text from `steiner2uart.vhd`, with
   the reference model, see
@@ -176,7 +176,7 @@ compares the solutions with those of [`steiner_ref.py`](steiner_ref.py), and wit
 the results file if there is one. The reference model works completely differently
 from the design: It finds the Steiner systems as an exact cover, where every set of
 `t` columns must be in exactly one row, and doesn't use any early pruning. `CHECK`
-holds every admissible parameter set with `n <= 10`, except `(10, 4, 3)`, which takes
+holds every admissible parameter set with `n <= 10`, except `(3, 4, 10)`, which takes
 over an hour to simulate. (It has 2520 solutions, and they match too.)
 
 For each parameter set, `make check` also runs
@@ -188,8 +188,8 @@ wait, and fails if a character changes while it is waiting to be accepted.
 ## Formal verification
 
 The properties in [`formal/steiner.psl`](formal/steiner.psl) are proven for all
-reachable states by k-induction, with the parameters `(4, 2, 1)`, `(7, 3, 2)` and
-`(8, 4, 3)`:
+reachable states by k-induction, with the parameters `(1, 2, 4)`, `(2, 3, 7)` and
+`(3, 4, 8)`:
 
 * The output holds `m_valid_o` and `m_data_o` until the solution is accepted.
 * `done_o` stays high once set, and is never high while a solution is waiting.
@@ -199,7 +199,7 @@ reachable states by k-induction, with the parameters `(4, 2, 1)`, `(7, 3, 2)` an
   every stack entry hold exactly the rows they should, see
   [Why it works](ALGORITHM.md#why-it-works).
 
-With `(4, 2, 1)` the whole search takes about 15 clock cycles, so the `bmc` and
+With `(1, 2, 4)` the whole search takes about 15 clock cycles, so the `bmc` and
 `cover` tasks also run it to the end. To run one task and look at a failing trace:
 
 ```
@@ -226,7 +226,7 @@ Each solution is sent as text over the board's USB-UART, at 115200 baud with 8N1
 in the same layout as the example above: one line for each row, with its index, and
 an empty line after each solution. Lines end with CR LF. The search waits while a
 solution is being sent, so on the board it takes about 12 seconds to send all 840
-solutions for `(9, 3, 2)`, rather than 0.66 ms.
+solutions for `(2, 3, 9)`, rather than 0.66 ms.
 
 ## License
 

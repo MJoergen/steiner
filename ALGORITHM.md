@@ -80,7 +80,7 @@ before `c`, but `cand` has none of these, since `c` is its first row.
 
 So each clock cycle visits one node of the search tree, and no clock cycles are
 spent on rows that don't fit. Every place is undone exactly once, by a backtrack
-or after an output. For `(9, 3, 2)` the search takes 62,293 places, 61,453
+or after an output. For `(2, 3, 9)` the search takes 62,293 places, 61,453
 backtracks and 840 outputs, i.e. 124,586 clock cycles.
 
 ### Why it works
@@ -110,14 +110,14 @@ forward, and looked up whether that row fit with every placed row. That meant a
 lookup for each of the `b` placed rows, and an AND of their outputs, all in the
 same clock cycle. It also spent one clock cycle on every row that didn't fit.
 
-| `(n, k, t)` | Original design | This design | Ratio |
+| `(t, k, n)` | Original design | This design | Ratio |
 | ----------- | --------------- | ----------- | ----- |
-| (7, 3, 2)   | 6,012           | 510         | 11.8  |
-| (9, 3, 2)   | 1,026,721       | 124,586     | 8.2   |
-| (8, 4, 3)   | 474,896         | 12,510      | 38.0  |
+| (2, 3, 7)   | 6,012           | 510         | 11.8  |
+| (2, 3, 9)   | 1,026,721       | 124,586     | 8.2   |
+| (3, 4, 8)   | 474,896         | 12,510      | 38.0  |
 
 These are clock cycles for the whole search, when every solution is accepted
-right away. For `(8, 4, 3)`, the original design is taken with the fix of the
+right away. For `(3, 4, 8)`, the original design is taken with the fix of the
 [early pruning](#early-pruning) for `t > 2`. Without it, it found no solutions.
 
 ## Early pruning
@@ -131,7 +131,7 @@ a solution (`C_L2` in the code), so column 1 is in `r - l_2` rows without
 column 0. These rows come right after the rows with column 0, so the next
 `r - l_2` rows of a solution have column 1. They are the rows before
 `C_SEG2 = B(n-1,k-1) + B(n-2,k-1)`. For `t = 2`, `l_2` is 1, and for
-`(8, 4, 3)` it is 3. For `t = 1`, `l_2` isn't defined, and only the first rule
+`(3, 4, 8)` it is 3. For `t = 1`, `l_2` isn't defined, and only the first rule
 is used.
 
 Both rules only forbid rows from the end of the order, at a given depth. So it
@@ -151,12 +151,12 @@ The first row in `cand` is isolated as `x and -x`, i.e. `x and (not x + 1)`.
 The `+ 1` carries through the zeros below the first one in `x`, and stops at
 the first one, so only that bit is left after the AND. Vivado maps this to a
 carry chain, which is fast: about 0.1 ns for every 4 bits. But for all 84 rows
-of `(9, 3, 2)` that is 21 CARRY4 cells, about 2.9 ns.
+of `(2, 3, 9)` that is 21 CARRY4 cells, about 2.9 ns.
 
 ### Segments
 
 The rows are split into three segments at the pruning boundaries `C_SEG1` and
-`C_SEG2`, i.e. 28, 21 and 35 rows for `(9, 3, 2)`. Each segment has:
+`C_SEG2`, i.e. 28, 21 and 35 rows for `(2, 3, 9)`. Each segment has:
 
 * its own carry chain to find its first row,
 * its own "any row left" signal, `any(s)`, and
@@ -188,7 +188,7 @@ are kept in registers, and updated whenever `depth` is.
 The lookup takes the row as a one-hot vector, rather than as an index. So output
 bit `j` is just the OR of the input bits of the rows that conflict with row `j`,
 and no decoding is needed. Only the rows up to `j` are included, since `cand`
-has no rows before the row being placed. For `(9, 3, 2)` each row conflicts with
+has no rows before the row being placed. For `(2, 3, 9)` each row conflicts with
 18 other rows, so each output bit is an OR of at most 19 inputs, which is two
 levels of LUTs.
 
@@ -196,7 +196,7 @@ levels of LUTs.
 
 The stack is only ever read at the top (`depth - 1`), and only written at the
 entry of the row being placed, so it fits in distributed RAM: 84 bits wide and
-12 entries deep for `(9, 3, 2)`, which takes 56 LUTs. Unlike a stack in flip-flops, it doesn't
+12 entries deep for `(2, 3, 9)`, which takes 56 LUTs. Unlike a stack in flip-flops, it doesn't
 add to the fanout of the decision to place or backtrack.
 
 Writing to the stack is delayed by one clock cycle, so that the carry chains
@@ -260,7 +260,7 @@ with anything that changes the netlist or its names, even a change outside the
 search. A run that meets timing always has a WNS close to zero, because the
 router and `phys_opt_design` stop as soon as timing is met.
 
-With 124,586 clock cycles at 190 MHz, the whole search for `(9, 3, 2)` takes
+With 124,586 clock cycles at 190 MHz, the whole search for `(2, 3, 9)` takes
 0.66 ms, compared with 11.4 ms for the original design at 90 MHz.
 
 ### Critical paths
@@ -303,7 +303,7 @@ only every other cycle, and the solutions would no longer come out in order.
 * `cand` and the registers for the delayed write are about `3 * B(n,k)`
   flip-flops.
 
-For `(9, 3, 2)` the search uses 957 LUTs (56 of them as distributed RAM) and 488
+For `(2, 3, 9)` the search uses 957 LUTs (56 of them as distributed RAM) and 488
 flip-flops. About 215 of the flip-flops are the columns of the placed rows and the
 output register, for `m_data_o`. The original design grew as `b * B(n,k)` LUTs, since it
 had a lookup for each placed row.

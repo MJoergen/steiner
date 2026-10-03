@@ -26,9 +26,9 @@ library work;
 
 entity steiner2uart is
   generic (
-    G_N : natural := 9;
+    G_T : natural := 2;
     G_K : natural := 3;
-    G_T : natural := 2
+    G_N : natural := 9
   );
   port (
     clk_i     : in  std_logic;

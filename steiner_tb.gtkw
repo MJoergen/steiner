@@ -1,6 +1,6 @@
 [*]
 [*] GTKWave setup for steiner_tb.ghw from "make sim", with the default
-[*] parameters (n, k, t) = (9, 3, 2): 84 rows and 12 rows per solution.
+[*] parameters (t, k, n) = (2, 3, 9): 84 rows and 12 rows per solution.
 [*] Use it with "make show".
 [*]
 [timestart] 0

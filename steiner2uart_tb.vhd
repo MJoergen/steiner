@@ -18,9 +18,9 @@ library work;
 
 entity steiner2uart_tb is
   generic (
-    G_N       : natural := 9;
-    G_K       : natural := 3;
     G_T       : natural := 2;
+    G_K       : natural := 3;
+    G_N       : natural := 9;
     G_TIMEOUT : time    := 1100 ms;
     G_OUTPUT  : string  := "steiner2uart_tb.txt"
   );

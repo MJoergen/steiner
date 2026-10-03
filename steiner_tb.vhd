@@ -19,9 +19,9 @@ library work;
 
 entity steiner_tb is
   generic (
-    G_N       : natural := 9;
-    G_K       : natural := 3;
     G_T       : natural := 2;
+    G_K       : natural := 3;
+    G_N       : natural := 9;
     G_TIMEOUT : time    := 1100 ms;
     G_OUTPUT  : string  := "steiner_tb.txt"
   );
@@ -89,11 +89,11 @@ architecture simulation of steiner_tb is
   -- The number of solutions for the known results, or -1 if unknown
   pure function expected_count return integer is
   begin
-    if G_N = 7 and G_K = 3 and G_T = 2 then
+    if G_T = 2 and G_K = 3 and G_N = 7 then
       return 30;
-    elsif G_N = 9 and G_K = 3 and G_T = 2 then
+    elsif G_T = 2 and G_K = 3 and G_N = 9 then
       return 840;
-    elsif G_N = 8 and G_K = 4 and G_T = 3 then
+    elsif G_T = 3 and G_K = 4 and G_N = 8 then
       return 30;
     else
       return -1;
@@ -133,7 +133,7 @@ begin
     ); -- steiner_inst
 
   -- Hold m_ready low for random periods averaging 1024 clock cycles, about once
-  -- every 4096 clock cycles. For (9, 3, 2), solutions are about 150 clock cycles
+  -- every 4096 clock cycles. For (t, k, n) = (2, 3, 9), solutions are about 150 clock cycles
   -- apart on average, so this makes the search wait for some of them.
   ready_proc : process (clk)
     variable seed1 : positive := 1;

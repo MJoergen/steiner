@@ -10,7 +10,7 @@
 -- lexicographic order of their row indices, and done_o goes high when the search
 -- is finished.
 --
--- For example, (n, k, t) = (9, 3, 2) gives 840 solutions with b = 12 rows each.
+-- For example, (t, k, n) = (2, 3, 9) gives 840 solutions with b = 12 rows each.
 -- Each column is then in r = B(n-1,t-1) / B(k-1,t-1) = 4 rows. One solution is:
 --
 --  0 ***......
@@ -45,9 +45,9 @@ library work;
 
 entity steiner is
   generic (
-    G_N : natural := 9;
+    G_T : natural := 2;
     G_K : natural := 3;
-    G_T : natural := 2
+    G_N : natural := 9
   );
   port (
     clk_i     : in  std_logic;
@@ -76,8 +76,8 @@ architecture synthesis of steiner is
       severity failure;
     for i in 0 to G_T-1 loop
       assert binom(G_N-i, G_T-i) mod binom(G_K-i, G_T-i) = 0
-        report "The parameters (n, k, t) = (" & to_string(G_N) & ", " & to_string(G_K) &
-               ", " & to_string(G_T) & ") are not admissible: B(n-" & to_string(i) &
+        report "The parameters (t, k, n) = (" & to_string(G_T) & ", " & to_string(G_K) &
+               ", " & to_string(G_N) & ") are not admissible: B(n-" & to_string(i) &
                ",t-" & to_string(i) & ") / B(k-" & to_string(i) & ",t-" & to_string(i) &
                ") is not a whole number"
         severity failure;
